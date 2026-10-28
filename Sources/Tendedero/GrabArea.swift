@@ -42,7 +42,7 @@ struct GrabArea: NSViewRepresentable {
             line.prune()
         }
         view.onTrash = { line.trash(id) }
-        view.onDiscard = { line.discard(id) }
+        view.onDiscard = { if isNote { line.onDeleteNote(id) } else { line.discard(id) } }
         view.onLongPress = { line.markup(id) }
         view.onForceClick = { if isNote { line.onEditNote(id) } else { line.quickLook(id) } }
         view.onPressChange = { pressed in line.pressedID = pressed ? id : nil }
@@ -64,6 +64,9 @@ struct GrabArea: NSViewRepresentable {
                 menu.addItem(ClosureMenuItem(L("Save to Desktop")) { line.saveToDesktop(id) })
             }
             menu.addItem(.separator())
+            if isNote {
+                menu.addItem(ClosureMenuItem(L("Delete note…")) { line.onDeleteNote(id) })
+            }
             if inInbox {
                 menu.addItem(ClosureMenuItem(L("Discard")) { line.discard(id) })
             } else {

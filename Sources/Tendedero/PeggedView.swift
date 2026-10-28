@@ -88,17 +88,31 @@ struct PeggedView: View {
                 // Drawn here, clicked through GrabView, which sits on top. A
                 // cross sends a file in Tendedero's folder to the Trash; for a
                 // file anywhere else it only hides it from the line.
-                Image(systemName: line.isInInbox(item.id) ? "xmark" : "eye.slash")
-                    .font(.system(size: 8, weight: .bold))
+                Image(systemName: item.isNote ? "trash" : (line.isInInbox(item.id) ? "xmark" : "eye.slash"))
+                    .font(.system(size: item.isNote ? 11 : 8, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(width: 20, height: 20)
                     .glassFrame(circle: true)
                     .padding(3)
-                    .opacity(hovering && !dragging ? 1 : 0)
-                    .scaleEffect(hovering ? 1 : 0.6)
+                    .opacity((item.isNote || hovering) && !dragging ? 1 : 0)
+                    .scaleEffect(item.isNote || hovering ? 1 : 0.6)
                     .allowsHitTesting(false)
             }
             .overlay(GrabArea(item: item, line: line))
+            .overlay(alignment: .topLeading) {
+                if item.isNote {
+                    Button { line.onDeleteNote(item.id) } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                            .glassFrame(circle: true)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(2)
+                    .help(L("Delete note…"))
+                    .accessibilityLabel(L("Delete note…"))
+                }
+            }
             .overlay(alignment: .bottom) {
                 if copied {
                     Label(L("Copied"), systemImage: "checkmark")

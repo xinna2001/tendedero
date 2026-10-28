@@ -59,12 +59,13 @@ struct LineView: View {
     var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
+            let live = line.items.filter { !$0.falling }
             ZStack(alignment: .topLeading) {
                 Rope(width: width)
 
-                ForEach(Array(line.items.enumerated()), id: \.element.id) { index, item in
-                    let x = Layout.x(index: index, count: line.items.count, width: max(0, width - Layout.spacing),
-                                     visible: max(1, line.visibleCount - 1), scroll: line.scroll)
+                ForEach(Array(live.enumerated()), id: \.element.id) { index, item in
+                    let x = Layout.x(index: index, count: live.count + 1, width: width,
+                                     visible: line.visibleCount, scroll: line.scroll)
                     let ropeY = Layout.ropeY(x: x, width: width)
                     PeggedView(item: item, line: line)
                         .frame(width: Layout.cardWidth, height: Layout.panelHeight - ropeY, alignment: .top)
@@ -72,11 +73,12 @@ struct LineView: View {
                         .opacity(min(1, max(0, min(x, width - x) / 90)))
                         .position(x: x, y: ropeY - Layout.pinAbove + (Layout.panelHeight - ropeY) / 2)
                 }
-                let addX = max(65, width - 105)
+                let addX = Layout.x(index: live.count, count: live.count + 1, width: width,
+                                    visible: line.visibleCount, scroll: line.scroll)
                 EmptyNoteClip(action: { line.onNewNote() })
                     .position(x: addX, y: Layout.ropeY(x: addX, width: width) + 19)
             }
-            .animation(.spring(response: 0.55, dampingFraction: 0.78), value: line.items.map(\.id))
+            .animation(.spring(response: 0.55, dampingFraction: 0.78), value: live.map(\.id))
             .animation(.easeInOut(duration: 0.3), value: line.items.isEmpty)
             // Tucked away, the whole line waits above the top edge and slides
             // out from under the menu bar, the way an auto-hiding Dock does.

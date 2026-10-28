@@ -82,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         line.onNewNote = { [weak self] in self?.newNote() }
         line.onEditNote = { [weak self] id in self?.editNote(id) }
+        line.onDeleteNote = { [weak self] id in self?.deleteNote(id) }
         noteEditor.onSaved = { [weak self] url in self?.line.reloadThumbnail(for: url) }
         noteEditor.onClosed = { [weak self] in self?.awaySince = nil }
         chordMonitor.onAction = { [weak self] action in
@@ -226,6 +227,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.regionCapture.capture() }
     }
 
+    private func deleteNote(_ id: UUID) {
+        guard noteEditor.close() else { return }
+        GrabView.isShowingMenu = true
+        defer { GrabView.isShowingMenu = false }
+        let alert = NSAlert()
+        alert.messageText = L("Delete this note?")
+        alert.informativeText = L("The note will move to the Trash and can be restored there.")
+        alert.addButton(withTitle: L("Delete"))
+        alert.addButton(withTitle: L("Cancel"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { _ = line.trash(id) }
+    }
+
     private func bridgeCommand(_ request: BridgeRequest) throws -> BridgeReceipt {
         var note: NoteRecord?
         switch request.operation {
@@ -260,10 +274,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     #if DEBUG
     private func runUIChecks() {
+        for number in 1...3 {
+            if let note = try? ClipPaths.notes.create(text: "参考便签 \(number)") {
+                _ = line.hang(ClipPaths.notes.url(for: note.id))
+            }
+        }
         showLine()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
             guard let self else { return }
             let originalCount = self.line.liveCount
+            let beforeClipX = self.line.hitRects[Line.emptyClipID]?.midX ?? 0
             if let rect = self.line.hitRects[Line.emptyClipID] {
                 let point = NSPoint(x: rect.midX, y: self.panel.frame.height - rect.midY)
                 self.panel.ignoresMouseEvents = false
@@ -277,6 +297,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                 let clicked = self.line.liveCount == originalCount + 1
+                let afterClipX = self.line.hitRects[Line.emptyClipID]?.midX ?? 0
+                let lastCardX = self.line.items.last.flatMap { self.line.hitRects[$0.id]?.midX } ?? 0
+                let dynamicClip = afterClipX > beforeClipX && afterClipX > lastCardX
                 let sample = "图绳便签\n\n点空夹子创建纸张\n双击修改，自动保存\n\nQ+A：框选截图\nShift+Q+A：展示 / 收起"
                 let editorWorked = self.noteEditor.insertForUIChecks(sample)
                 guard let note = try? ClipPaths.notes.all().last else {
@@ -311,8 +334,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                     let persisted = (try? ClipPaths.notes.read(note.id).text) == sample
-                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted,
+                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip,
                         "emptyClipClicked": clicked, "editorWorked": editorWorked,
+                        "dynamicEmptyClip": dynamicClip,
                         "clipboardTextExact": copied, "persistedTextExact": persisted, "noteID": note.id.uuidString]
                     try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted])
                         .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))

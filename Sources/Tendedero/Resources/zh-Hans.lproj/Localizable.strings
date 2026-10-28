@@ -79,3 +79,13 @@
 "Screen capture needs Screen Recording permission in System Settings." = "框选截图需要在系统设置中允许 ClipLine 的屏幕录制权限。";
 
 "OK" = "好";
+
+"Delete note…" = "删除便签…";
+
+"Delete this note?" = "删除这张便签？";
+
+"The note will move to the Trash and can be restored there." = "便签将移到废纸篓，可在那里恢复。";
+
+"Delete" = "删除";
+
+"Cancel" = "取消";
