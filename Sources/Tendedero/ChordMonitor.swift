@@ -22,10 +22,10 @@ final class ChordMonitor {
         }
         let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue) | (1 << CGEventType.flagsChanged.rawValue)
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
-            eventsOfInterest: CGEventMask(mask), callback: { _, type, event, pointer in
+            eventsOfInterest: CGEventMask(mask), callback: { proxy, type, event, pointer in
                 guard let pointer else { return Unmanaged.passUnretained(event) }
                 let monitor = Unmanaged<ChordMonitor>.fromOpaque(pointer).takeUnretainedValue()
-                return MainActor.assumeIsolated { monitor.handle(type, event) }
+                return MainActor.assumeIsolated { monitor.handle(type, event, proxy: proxy) }
             }, userInfo: Unmanaged.passUnretained(self).toOpaque()) else { return false }
         self.tap = tap
         source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
@@ -39,10 +39,10 @@ final class ChordMonitor {
         if let tap { CFMachPortInvalidate(tap) }
         tap = nil; source = nil; state.reset(); consumed.removeAll()
     }
-    private func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handle(_ type: CGEventType, _ event: CGEvent, proxy: CGEventTapProxy? = nil) -> Unmanaged<CGEvent>? {
         if event.getIntegerValueField(.eventSourceUserData) == Self.replayTag { return Unmanaged.passUnretained(event) }
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            flush(); state.reset(); consumed.removeAll()
+            flush(proxy); state.reset(); consumed.removeAll()
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
@@ -50,7 +50,7 @@ final class ChordMonitor {
         let flags = event.flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift])
         let permitted = flags.subtracting(.maskShift).isEmpty
         if type == .flagsChanged {
-            if !permitted { flush(); state.reset() }
+            if !permitted { flush(proxy); state.reset() }
             return Unmanaged.passUnretained(event)
         }
         if type == .keyUp {
@@ -58,12 +58,15 @@ final class ChordMonitor {
             if consumed.remove(key) != nil { return nil }
             if !buffered.isEmpty, [ChordState.q, ChordState.a].contains(key) {
                 if let copy = event.copy() { buffered.append(copy) }
-                flush(); return nil
+                flush(proxy); return nil
             }
             return Unmanaged.passUnretained(event)
         }
         let repeating = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-        if consumed.contains(key) { return nil }
+        if !consumed.isEmpty, [ChordState.q, ChordState.a].contains(key) {
+            consumed.insert(key)
+            return nil
+        }
         let action = state.press(key, at: Double(event.timestamp) / 1_000_000_000,
                                  shift: flags.contains(.maskShift), permitted: permitted, repeating: repeating)
         if let action {
@@ -73,8 +76,8 @@ final class ChordMonitor {
             return nil
         }
         guard permitted, !repeating, [ChordState.q, ChordState.a].contains(key) else {
-            if repeating, !buffered.isEmpty { flush(); state.reset() }
-            else { flush() }
+            if repeating, !buffered.isEmpty { flush(proxy); state.reset() }
+            else { flush(proxy) }
             return Unmanaged.passUnretained(event)
         }
         if buffered.isEmpty, let copy = event.copy() {
@@ -84,15 +87,16 @@ final class ChordMonitor {
             DispatchQueue.main.asyncAfter(deadline: .now() + ChordState.window, execute: work)
             return nil
         }
-        flush()
+        flush(proxy)
         return Unmanaged.passUnretained(event)
     }
-    private func flush() {
+    private func flush(_ proxy: CGEventTapProxy? = nil) {
         pending?.cancel(); pending = nil
         let events = buffered; buffered.removeAll()
         for event in events {
             event.setIntegerValueField(.eventSourceUserData, value: Self.replayTag)
-            event.post(tap: .cgSessionEventTap)
+            if let proxy { event.tapPostEvent(proxy) }
+            else { event.post(tap: .cgSessionEventTap) }
         }
     }
 }

@@ -1,6 +1,6 @@
 # ClipLine · 图绳
 
-Mac 截图与可编辑便签的桌面挂绳。基于 [Tendedero v1.6.1](https://github.com/alejandrobujan/tendedero) 独立修改，使用自己的名称和图标，当前版本 **1.7.0**。
+Mac 截图与可编辑便签的桌面挂绳。基于 [Tendedero v1.6.1](https://github.com/alejandrobujan/tendedero) 独立修改，使用自己的名称和图标，当前版本 **1.7.1**。
 
 ## 文字便签
 

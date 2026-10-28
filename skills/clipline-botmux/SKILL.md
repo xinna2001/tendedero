@@ -5,7 +5,7 @@ description: 把飞书消息挂成 Mac 图绳的可编辑文字便签，打开�
 
 # 图绳与 Botmux 联动
 
-用 `scripts/clipline.py` 与独立 Mac 应用 ClipLine 交互。应用存储在 `~/Applications/ClipLine.app`；数据在 `~/Library/Application Support/ClipLine`。仓库为 https://github.com/xinna2001/tendedero ，版本 1.7.0 起支持联动。
+用 `scripts/clipline.py` 与独立 Mac 应用 ClipLine 交互。应用存储在 `~/Applications/ClipLine.app`；数据在 `~/Library/Application Support/ClipLine`。仓库为 https://github.com/xinna2001/tendedero ，版本 1.7.1 起支持联动。
 
 ## 挂文字
 
@@ -44,7 +44,7 @@ python3 scripts/clipline.py consume --session SESSION_ID --sender OPEN_ID --requ
 
 ## 安装与权限
 
-第一次缺少应用时，脚本从自有 GitHub 正式 Release 获取 `ClipLine-*-macos-universal.zip`，验证 SHA-256 和应用身份后安装。没有对应 Release 时从自有 `v1.7.0` 标签构建。不要替换上游 Tendedero，也不要清理便签目录。已有旧包需要更新时先正常退出并保留旧包。
+第一次缺少应用时，脚本从自有 GitHub 正式 Release 获取 `ClipLine-*-macos-universal.zip`，验证 SHA-256 和应用身份后安装。没有对应 Release 时从自有 `v1.7.1` 标签构建。不要替换上游 Tendedero，也不要清理便签目录。已有旧包需要更新时先正常退出并保留旧包。
 
 Q+A 框选截图、Shift+Q+A 展示/收起需要系统允许 ClipLine 的辅助功能；截图还需要屏幕录制权限。读取 `status` 的实际结果，权限缺失时说明系统设置中的具体开关，不声称快捷键已生效。不要修改 macOS TCC 数据库或代替用户授予系统权限。
 

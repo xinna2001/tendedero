@@ -14,8 +14,8 @@ from pathlib import Path, PurePosixPath
 
 REPOSITORY = "xinna2001/tendedero"
 APP_ID = "com.xinna2001.ClipLine"
-VERSION = "1.7.0"
-SOURCE_REF = "v1.7.0"
+VERSION = "1.7.1"
+SOURCE_REF = "v1.7.1"
 
 
 def app_version(app):
@@ -45,7 +45,18 @@ def release_app(work):
     except urllib.error.HTTPError as error:
         if error.code == 404:
             return None
-        raise
+        if error.code in (403, 429):
+            if shutil.which("gh"):
+                result = subprocess.run(["gh", "api", f"repos/{REPOSITORY}/releases/latest"],
+                                        capture_output=True, timeout=45)
+                if result.returncode == 0:
+                    release = json.loads(result.stdout)
+                else:
+                    return None
+            else:
+                return None
+        else:
+            raise
     assets = release.get("assets", [])
     asset = next((a for a in assets if a["name"].startswith("ClipLine-") and a["name"].endswith("-macos-universal.zip")), None)
     if asset is None:
