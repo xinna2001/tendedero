@@ -114,6 +114,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         registerShortcut()
 
         setUpStatusItem()
+        ApplicationMenu.install(show: { [weak self] in self?.showLine() },
+                                capture: { [weak self] in self?.captureRegion() },
+                                note: { [weak self] in self?.newNote() })
         watchMenuBarClicks()
 
         Markup.shared.onSaved = { [weak self] url in self?.line.reloadThumbnail(for: url) }
@@ -191,6 +194,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         noteEditor.save() ? .terminateNow : .terminateCancel
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showLine()
+        return true
     }
 
     // MARK: Manual notes and local Botmux bridge
@@ -301,7 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let lastCardX = self.line.items.last.flatMap { self.line.hitRects[$0.id]?.midX } ?? 0
                 let dynamicClip = afterClipX > beforeClipX && afterClipX > lastCardX
                 let sample = "图绳便签\n\n点空夹子创建纸张\n双击修改，自动保存\n\nQ+A：框选截图\nShift+Q+A：展示 / 收起"
-                let editorWorked = self.noteEditor.insertForUIChecks(sample)
+                let editorWorked = self.noteEditor.insertForUIChecks("先手动输入的一段文字")
                 guard let note = try? ClipPaths.notes.all().last else {
                     try? Data("{\"success\":false,\"emptyClipClicked\":\(clicked)}".utf8)
                         .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
@@ -311,6 +319,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let before = (clipboard.pasteboardItems ?? []).map { item in
                     item.types.compactMap { type in item.data(forType: type).map { (type, $0) } }
                 }
+                clipboard.clearContents()
+                clipboard.setString(sample, forType: .string)
+                let pasteWorked = self.noteEditor.pasteForUIChecks(sample)
                 self.line.copy(note.id)
                 let copied = clipboard.string(forType: .string) == sample
                 let count = clipboard.changeCount
@@ -334,9 +345,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                     let persisted = (try? ClipPaths.notes.read(note.id).text) == sample
-                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip,
+                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip && pasteWorked,
                         "emptyClipClicked": clicked, "editorWorked": editorWorked,
                         "dynamicEmptyClip": dynamicClip,
+                        "commandVPaste": pasteWorked, "dockVisible": NSApp.activationPolicy() == .regular,
                         "clipboardTextExact": copied, "persistedTextExact": persisted, "noteID": note.id.uuidString]
                     try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted])
                         .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
@@ -871,16 +883,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let count = line.liveCount
         let description = on ? L("Tendedero, hanging copied images") : "ClipLine"
         let state = count == 0 ? L("The line is empty") : String(format: L("%d on the line"), count)
-        let image = NSImage(systemSymbolName: on ? "tshirt.fill" : "tshirt",
+        let image = NSImage(systemSymbolName: "paperclip",
                             accessibilityDescription: "\(description), \(state)")
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.appearsDisabled = count == 0
+        statusItem.button?.appearsDisabled = false
         statusItem.button?.toolTip = "\(description)\n\(state)"
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+
+        menu.addItem(ClosureMenuItem(L("New note")) { [weak self] in self?.newNote() })
+        menu.addItem(ClosureMenuItem(L("Region capture")) { [weak self] in self?.captureRegion() })
 
         let toggleItem = ClosureMenuItem(isRevealed ? L("Hide line") : L("Show line")) { [weak self] in
             self?.toggle()
