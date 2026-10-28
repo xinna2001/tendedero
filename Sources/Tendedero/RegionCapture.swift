@@ -8,6 +8,10 @@ final class RegionCapture {
     var onError: (String) -> Void = { _ in }
     func capture() {
         guard process == nil else { return }
+        guard CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess() else {
+            onError(L("Screen capture needs Screen Recording permission in System Settings."))
+            return
+        }
         do {
             try FileManager.default.createDirectory(at: Inbox.folder, withIntermediateDirectories: true)
             let url = Inbox.folder.appendingPathComponent("Capture-\(UUID().uuidString).png")

@@ -22,13 +22,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var folderWatchers: [ScreenshotWatcher] = []
     private var clipboardWatcher: ClipboardWatcher!
     private var signalSources: [DispatchSourceSignal] = []
-    private var hotKey: HotKey?
     private var cancellables = Set<AnyCancellable>()
     private var mouseTimer: Timer?
     private let noteEditor = NoteEditor()
     private let chordMonitor = ChordMonitor()
     private let regionCapture = RegionCapture()
     private let bridge = AppBridge()
+    private var captureShortcutCount = 0
+    private var toggleShortcutCount = 0
     private static let systemChordsEnabled = ProcessInfo.processInfo.environment["CLIPLINE_DATA_ROOT"] == nil
 
     /// Whether the panel is ordered in. It can be in and still tucked away
@@ -86,7 +87,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         noteEditor.onSaved = { [weak self] url in self?.line.reloadThumbnail(for: url) }
         noteEditor.onClosed = { [weak self] in self?.awaySince = nil }
         chordMonitor.onAction = { [weak self] action in
-            if action == .toggle { self?.toggle() } else { self?.captureRegion() }
+            if action == .toggle {
+                self?.toggleShortcutCount += 1
+                self?.toggle()
+            } else {
+                self?.captureShortcutCount += 1
+                self?.captureRegion()
+            }
         }
         if Self.systemChordsEnabled { _ = chordMonitor.start() }
         regionCapture.onCaptured = { [weak self] url in self?.hangCapture(url) }
@@ -101,7 +108,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
              "globalChordsActive": self?.chordMonitor.isRunning ?? false,
              "accessibilityTrusted": AXIsProcessTrusted(),
              "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
-             "captureShortcut": "Q+A", "toggleShortcut": "Shift+Q+A"]
+             "captureShortcut": "Shift+Z", "toggleShortcut": "Caps Lock+Shift",
+             "captureShortcutRegistered": self?.chordMonitor.captureRegistered ?? false,
+             "captureShortcutCount": self?.captureShortcutCount ?? 0,
+             "toggleShortcutCount": self?.toggleShortcutCount ?? 0]
         }
         do { try bridge.start() } catch { showError(error.localizedDescription) }
 
@@ -110,8 +120,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startWatcher()
         clipboardWatcher = ClipboardWatcher { [weak self] url in self?.hangCapture(url) }
         if ClipboardWatcher.isEnabled { clipboardWatcher.start() }
-
-        registerShortcut()
 
         setUpStatusItem()
         ApplicationMenu.install(show: { [weak self] in self?.showLine() },
@@ -237,15 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func deleteNote(_ id: UUID) {
         guard noteEditor.close() else { return }
-        GrabView.isShowingMenu = true
-        defer { GrabView.isShowingMenu = false }
-        let alert = NSAlert()
-        alert.messageText = L("Delete this note?")
-        alert.informativeText = L("The note will move to the Trash and can be restored there.")
-        alert.addButton(withTitle: L("Delete"))
-        alert.addButton(withTitle: L("Cancel"))
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn { _ = line.trash(id) }
+        _ = line.trash(id)
     }
 
     private func bridgeCommand(_ request: BridgeRequest) throws -> BridgeReceipt {
@@ -308,7 +308,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let afterClipX = self.line.hitRects[Line.emptyClipID]?.midX ?? 0
                 let lastCardX = self.line.items.last.flatMap { self.line.hitRects[$0.id]?.midX } ?? 0
                 let dynamicClip = afterClipX > beforeClipX && afterClipX > lastCardX
-                let sample = "图绳便签\n\n点空夹子创建纸张\n双击修改，自动保存\n\nQ+A：框选截图\nShift+Q+A：展示 / 收起"
+                let sample = "图绳便签\n\n点空夹子创建纸张\nCommand+V 粘贴，自动保存\n右上角垃圾桶可直接删除\n\nShift+Z：框选截图\nCaps Lock+Shift：展示 / 收起"
                 let editorWorked = self.noteEditor.insertForUIChecks("先手动输入的一段文字")
                 guard let note = try? ClipPaths.notes.all().last else {
                     try? Data("{\"success\":false,\"emptyClipClicked\":\(clicked)}".utf8)
@@ -345,10 +345,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                     let persisted = (try? ClipPaths.notes.read(note.id).text) == sample
-                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip && pasteWorked,
+                    var clickedTrash = false
+                    if let rect = self.line.hitRects[note.id] {
+                        _ = self.noteEditor.close()
+                        let point = NSPoint(x: rect.maxX - 13, y: self.panel.frame.height - rect.minY - 13)
+                        self.panel.ignoresMouseEvents = false
+                        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                            if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: self.panel.windowNumber,
+                                context: nil, eventNumber: 2, clickCount: 1, pressure: 1) {
+                                self.panel.sendEvent(event)
+                            }
+                        }
+                        clickedTrash = !FileManager.default.fileExists(atPath: ClipPaths.notes.url(for: note.id).path)
+                    }
+                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip && pasteWorked && clickedTrash,
                         "emptyClipClicked": clicked, "editorWorked": editorWorked,
                         "dynamicEmptyClip": dynamicClip,
                         "commandVPaste": pasteWorked, "dockVisible": NSApp.activationPolicy() == .regular,
+                        "trashButtonDeletes": clickedTrash,
                         "clipboardTextExact": copied, "persistedTextExact": persisted, "noteID": note.id.uuidString]
                     try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted])
                         .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
@@ -727,7 +742,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let retractDelay: TimeInterval = 0.5
 
     private func tick() {
-        if Self.systemChordsEnabled, !chordMonitor.isRunning, AXIsProcessTrusted() { _ = chordMonitor.start() }
+        if Self.systemChordsEnabled, !chordMonitor.isRunning { _ = chordMonitor.start() }
         let mouse = NSEvent.mouseLocation
         let now = Date()
 
@@ -806,31 +821,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Shortcut
 
-    private func registerShortcut() {
-        hotKey = nil
-        guard let shortcut = Shortcut.current else { return }
-        hotKey = HotKey(shortcut) { [weak self] in self?.toggle() }
-    }
-
-    private func changeShortcut() {
-        // Off while recording, so pressing the current one records it
-        // instead of showing the line.
-        hotKey = nil
-        ShortcutRecorder.shared.record { [weak self] result in
-            guard let self else { return }
-            if let result {
-                let previous = Shortcut.current
-                Shortcut.current = result
-                self.registerShortcut()
-                // Taken by another app: keep the one that worked.
-                if result != nil && self.hotKey == nil {
-                    NSSound.beep()
-                    Shortcut.current = previous
-                }
-            }
-            self.registerShortcut()
-        }
-    }
 
     private func setKeep(_ n: Int?) {
         guard n != Line.keepOnLine else { return }
@@ -865,13 +855,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         statusItem.menu = menu
-        menu.insertItem(ClosureMenuItem(L("New note")) { [weak self] in self?.newNote() }, at: 0)
-        menu.insertItem(ClosureMenuItem(L("Region capture · Q+A")) { [weak self] in self?.captureRegion() }, at: 1)
-        menu.insertItem(ClosureMenuItem(L("Enable Q+A / Shift+Q+A shortcuts…")) { [weak self] in
-            if self?.chordMonitor.start(prompt: true) != true {
-                self?.showError(L("Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again."))
-            }
-        }, at: 2)
+
     }
 
     /// The shirt fills in while copied images are hung, so it shows at a
@@ -895,14 +879,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
 
         menu.addItem(ClosureMenuItem(L("New note")) { [weak self] in self?.newNote() })
-        menu.addItem(ClosureMenuItem(L("Region capture")) { [weak self] in self?.captureRegion() })
+        menu.addItem(ClosureMenuItem(L("Region capture · Shift+Z")) { [weak self] in self?.captureRegion() })
 
         let toggleItem = ClosureMenuItem(isRevealed ? L("Hide line") : L("Show line")) { [weak self] in
             self?.toggle()
-        }
-        if let shortcut = Shortcut.current, shortcut.key.count == 1 {
-            toggleItem.keyEquivalent = shortcut.key
-            toggleItem.keyEquivalentModifierMask = shortcut.modifiers
         }
         menu.addItem(toggleItem)
 
@@ -1000,14 +980,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sizeItem.submenu = sizes
         menu.addItem(sizeItem)
 
-        let shortcutItem = NSMenuItem(title: L("Shortcut"), action: nil, keyEquivalent: "")
-        let shortcuts = NSMenu()
-        let current = NSMenuItem(title: Shortcut.current?.display ?? L("None"), action: nil, keyEquivalent: "")
-        current.isEnabled = false
-        shortcuts.addItem(current)
-        shortcuts.addItem(ClosureMenuItem(L("Change Shortcut…")) { [weak self] in self?.changeShortcut() })
-        shortcutItem.submenu = shortcuts
-        menu.addItem(shortcutItem)
+        let shortcutInfo = NSMenuItem(title: L("Show / hide · Caps Lock+Shift"), action: nil, keyEquivalent: "")
+        shortcutInfo.isEnabled = false
+        menu.addItem(shortcutInfo)
+        menu.addItem(ClosureMenuItem(L("Screenshot permissions…")) {
+            _ = CGRequestScreenCaptureAccess()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                NSWorkspace.shared.open(url)
+            }
+        })
 
         menu.addItem(ClosureMenuItem(L("Open screenshots folder")) { [weak self] in
             guard let self else { return }
@@ -1037,7 +1018,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })
 
         menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem(L("Quit Tendedero"), key: "q") {
+        menu.addItem(ClosureMenuItem(L("Quit ClipLine"), key: "q") {
             NSApp.terminate(nil)
         })
     }
@@ -1045,14 +1026,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// tendedero.app with the running version, and the menus' language when
     /// the website has it too, so the page answers in the same words.
     private static var updatesURL: URL {
-        var components = URLComponents(string: "https://tendedero.app/")!
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        var query = [URLQueryItem(name: "update", value: version)]
-        if let language = Bundle.main.preferredLocalizations.first, ["en", "es", "gl", "fr", "pt-BR", "ja", "ko", "zh-Hans"].contains(language) {
-            query.append(URLQueryItem(name: "lang", value: language))
-        }
-        components.queryItems = query
-        return components.url!
+        URL(string: "https://github.com/xinna2001/tendedero/releases/latest")!
     }
 
     private static func toggleLaunchAtLogin() {

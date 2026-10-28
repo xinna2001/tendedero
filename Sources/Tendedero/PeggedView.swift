@@ -85,21 +85,20 @@ struct PeggedView: View {
             .animation(pressed ? .easeInOut(duration: 0.45) : .spring(response: 0.3, dampingFraction: 0.6), value: pressed)
             .opacity(dragging ? 0.45 : 1)
             .overlay(alignment: .topLeading) {
-                // Drawn here, clicked through GrabView, which sits on top. A
-                // cross sends a file in Tendedero's folder to the Trash; for a
-                // file anywhere else it only hides it from the line.
-                Image(systemName: item.isNote ? "trash" : (line.isInInbox(item.id) ? "xmark" : "eye.slash"))
-                    .font(.system(size: item.isNote ? 11 : 8, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 20, height: 20)
-                    .glassFrame(circle: true)
-                    .padding(3)
-                    .opacity((item.isNote || hovering) && !dragging ? 1 : 0)
-                    .scaleEffect(item.isNote || hovering ? 1 : 0.6)
-                    .allowsHitTesting(false)
+                if !item.isNote {
+                    Image(systemName: line.isInInbox(item.id) ? "xmark" : "eye.slash")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 20, height: 20)
+                        .glassFrame(circle: true)
+                        .padding(3)
+                        .opacity(hovering && !dragging ? 1 : 0)
+                        .scaleEffect(hovering ? 1 : 0.6)
+                        .allowsHitTesting(false)
+                }
             }
             .overlay(GrabArea(item: item, line: line))
-            .overlay(alignment: .topLeading) {
+            .overlay(alignment: .topTrailing) {
                 if item.isNote {
                     Button { line.onDeleteNote(item.id) } label: {
                         Image(systemName: "trash")

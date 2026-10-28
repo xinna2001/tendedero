@@ -14,8 +14,8 @@ from pathlib import Path, PurePosixPath
 
 REPOSITORY = "xinna2001/tendedero"
 APP_ID = "com.xinna2001.ClipLine"
-VERSION = "1.7.1"
-SOURCE_REF = "v1.7.1"
+VERSION = "1.7.2"
+SOURCE_REF = "v1.7.2"
 
 
 def app_version(app):
