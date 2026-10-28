@@ -48,6 +48,7 @@ final class Line: ObservableObject {
     static let emptyClipID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     var onNewNote: () -> Void = {}
     var onEditNote: (UUID) -> Void = { _ in }
+    var onDeleteNote: (UUID) -> Void = { _ in }
 
     var maxItems = 8
     /// How many photos fit across the screen. With Keep on line set, the
