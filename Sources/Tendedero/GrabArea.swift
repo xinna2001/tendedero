@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ClipLineCore
 
 /// Bridges each photo to AppKit's drag and drop, so it can be dragged into
 /// any app as a real file. Each destination means one thing:
@@ -29,10 +30,11 @@ struct GrabArea: NSViewRepresentable {
         let id = item.id
         let line = line
         let isRecording = item.isRecording
+        let isNote = item.isNote
         view.url = item.url
         view.dragImage = item.thumb
         view.onClick = { line.copy(id) }
-        view.onDoubleClick = { line.open(id) }
+        view.onDoubleClick = { if isNote { line.onEditNote(id) } else { line.open(id) } }
         view.onDragStart = { line.draggingID = id }
         view.onDragEnd = {
             line.draggingID = nil
@@ -42,16 +44,18 @@ struct GrabArea: NSViewRepresentable {
         view.onTrash = { line.trash(id) }
         view.onDiscard = { line.discard(id) }
         view.onLongPress = { line.markup(id) }
-        view.onForceClick = { line.quickLook(id) }
+        view.onForceClick = { if isNote { line.onEditNote(id) } else { line.quickLook(id) } }
         view.onPressChange = { pressed in line.pressedID = pressed ? id : nil }
         view.menuProvider = {
             let menu = NSMenu()
             // Items say themselves whether they can be used.
             menu.autoenablesItems = false
             menu.addItem(ClosureMenuItem(L("Copy")) { line.copy(id) })
-            menu.addItem(ClosureMenuItem(L("Open")) { line.open(id) })
-            menu.addItem(ClosureMenuItem(L("Quick Look")) { line.quickLook(id) })
-            if !isRecording {
+            menu.addItem(ClosureMenuItem(isNote ? L("Edit note") : L("Open")) {
+                if isNote { line.onEditNote(id) } else { line.open(id) }
+            })
+            if !isNote { menu.addItem(ClosureMenuItem(L("Quick Look")) { line.quickLook(id) }) }
+            if !isRecording && !isNote {
                 menu.addItem(ClosureMenuItem(L("Markup")) { line.markup(id) })
             }
             menu.addItem(ClosureMenuItem(L("Show in Finder")) { line.reveal(id) })
@@ -172,7 +176,23 @@ final class GrabView: NSView, NSDraggingSource {
         startedDrag = true
         endPress()
 
-        let item = NSDraggingItem(pasteboardWriter: url as NSURL)
+        let item: NSDraggingItem
+        if url.pathExtension == "clipnote", let note = try? NoteStore.decode(url) {
+            let folder = ClipPaths.base.appendingPathComponent("Exports", isDirectory: true)
+            let exported = folder.appendingPathComponent("\(UUID().uuidString).txt")
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
+                                                       attributes: [.posixPermissions: 0o700])
+                try Data(note.text.utf8).write(to: exported, options: .atomic)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: exported.path)
+            } catch { return }
+            let payload = NSPasteboardItem()
+            payload.setString(note.text, forType: .string)
+            payload.setString(exported.absoluteString, forType: .fileURL)
+            item = NSDraggingItem(pasteboardWriter: payload)
+        } else {
+            item = NSDraggingItem(pasteboardWriter: url as NSURL)
+        }
         item.setDraggingFrame(imageFrame(), contents: dragImage)
         let session = beginDraggingSession(with: [item], event: event, source: self)
         // Released where nothing accepts it: it flies back to the line.

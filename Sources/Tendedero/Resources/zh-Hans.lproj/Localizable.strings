@@ -64,3 +64,18 @@
 
 /* PeggedView */
 "Copied" = "已复制";
+
+// ClipLine notes and shortcuts
+"New note" = "新建便签";
+"Click the empty clip to write a note" = "点空夹子新建便签";
+"Double-click to write a note" = "双击填写便签";
+"Edit note" = "编辑便签";
+"Note text" = "便签内容";
+"Saved locally" = "已保存到本机";
+"Saving…" = "正在保存…";
+"Region capture · Q+A" = "框选截图 · Q+A";
+"Enable Q+A / Shift+Q+A shortcuts…" = "启用 Q+A / Shift+Q+A 快捷键…";
+"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "请在系统设置 → 隐私与安全性 → 辅助功能中允许 ClipLine，然后重试。";
+"Screen capture needs Screen Recording permission in System Settings." = "框选截图需要在系统设置中允许 ClipLine 的屏幕录制权限。";
+
+"OK" = "好";

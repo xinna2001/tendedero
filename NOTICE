@@ -1,0 +1,7 @@
+ClipLine · 图绳 is an independent modification of Tendedero.
+Upstream: https://github.com/alejandrobujan/tendedero
+Based on upstream v1.6.1 (43d827cfd52896c84319e0ed9ea3f5540855e286).
+Copyright (c) 2026 Alejandro Buján. Source code is licensed under MIT.
+ClipLine uses its own name and icon and is not endorsed by the upstream author.
+The copied-text proposal in upstream PR #12 informed note-card behavior.
+ClipLine creates notes explicitly and does not collect clipboard text.

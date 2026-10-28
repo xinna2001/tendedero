@@ -19,8 +19,8 @@ final class ClipboardWatcher {
     private static let enabledKey = "clipboardEnabled"
 
     static var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: enabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+        get { ClipSettings.defaults.bool(forKey: enabledKey) }
+        set { ClipSettings.defaults.set(newValue, forKey: enabledKey) }
     }
 
     /// Copies that carry a picture but are not one. Text from a spreadsheet

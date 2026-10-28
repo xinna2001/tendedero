@@ -2,11 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Tendedero",
+    name: "ClipLine",
     platforms: [.macOS(.v14)],
     targets: [
         // Resources holds the translations. scripts/build-app.sh copies them
         // into the app, so SwiftPM leaves them alone.
-        .executableTarget(name: "Tendedero", path: "Sources/Tendedero", exclude: ["Resources"])
+        .target(name: "ClipLineCore"),
+        .executableTarget(name: "Tendedero", dependencies: ["ClipLineCore"], path: "Sources/Tendedero", exclude: ["Resources"]),
+        .executableTarget(name: "ClipLineCoreChecks", dependencies: ["ClipLineCore"], path: "Tests/ClipLineCoreChecks")
     ]
 )

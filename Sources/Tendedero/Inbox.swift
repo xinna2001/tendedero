@@ -36,19 +36,19 @@ enum Inbox {
 
     static let folder: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("Tendedero/Screenshots", isDirectory: true)
+        return ClipPaths.base.appendingPathComponent("Screenshots", isDirectory: true)
     }()
 
     /// The user's choice, kept across launches.
     static var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: enabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+        get { ClipSettings.defaults.bool(forKey: enabledKey) }
+        set { ClipSettings.defaults.set(newValue, forKey: enabledKey) }
     }
 
     /// Whether we already asked, so the offer appears only once.
     static var wasOffered: Bool {
-        get { UserDefaults.standard.bool(forKey: offeredKey) }
-        set { UserDefaults.standard.set(newValue, forKey: offeredKey) }
+        get { ClipSettings.defaults.bool(forKey: offeredKey) }
+        set { ClipSettings.defaults.set(newValue, forKey: offeredKey) }
     }
 
     /// Whether macOS is currently sending screenshots to our folder.
@@ -62,7 +62,7 @@ enum Inbox {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         // Never save our own values as the "previous" ones, for example after
         // a crash left them applied.
-        var saved = UserDefaults.standard.dictionary(forKey: savedKey) ?? [:]
+        var saved = ClipSettings.defaults.dictionary(forKey: savedKey) ?? [:]
         if !isApplied {
             saved = [:]
             saved["location"] = CFPreferencesCopyAppValue(locationKey, domain) as? String
@@ -81,7 +81,7 @@ enum Inbox {
             saved["targetRecording"] = CFPreferencesCopyAppValue(recordingTargetKey, domain) as? String
             saved["targetSaved"] = true
         }
-        UserDefaults.standard.set(saved, forKey: savedKey)
+        ClipSettings.defaults.set(saved, forKey: savedKey)
         set(locationKey, folder.path)
         set(screenshotLocationKey, folder.path)
         set(recordingLocationKey, folder.path)
@@ -93,7 +93,7 @@ enum Inbox {
 
     static func restore() {
         guard isApplied else { return }
-        let saved = UserDefaults.standard.dictionary(forKey: savedKey) ?? [:]
+        let saved = ClipSettings.defaults.dictionary(forKey: savedKey) ?? [:]
         set(locationKey, saved["location"])
         set(screenshotLocationKey, saved["locationScreenshot"])
         set(recordingLocationKey, saved["locationRecording"])
@@ -101,7 +101,7 @@ enum Inbox {
         set(screenshotTargetKey, saved["targetScreenshot"])
         set(recordingTargetKey, saved["targetRecording"])
         set(thumbnailKey, saved["thumbnail"])
-        UserDefaults.standard.removeObject(forKey: savedKey)
+        ClipSettings.defaults.removeObject(forKey: savedKey)
     }
 
     /// Writes through cfprefsd, so the screenshot service sees it at once.

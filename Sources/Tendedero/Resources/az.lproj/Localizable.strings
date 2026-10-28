@@ -66,3 +66,18 @@
 
 /* PeggedView */
 "Copied" = "Kopyalandı";
+
+// ClipLine notes and shortcuts
+"New note" = "New note";
+"Click the empty clip to write a note" = "Click the empty clip to write a note";
+"Double-click to write a note" = "Double-click to write a note";
+"Edit note" = "Edit note";
+"Note text" = "Note text";
+"Saved locally" = "Saved locally";
+"Saving…" = "Saving…";
+"Region capture · Q+A" = "Region capture · Q+A";
+"Enable Q+A / Shift+Q+A shortcuts…" = "Enable Q+A / Shift+Q+A shortcuts…";
+"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again.";
+"Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
+
+"OK" = "OK";

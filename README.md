@@ -1,178 +1,56 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
-  <img src="docs/images/hero-light.png" alt="Tendedero. Screenshots, hung out to dry. Three screenshots in glass frames hang from a thin line under the macOS menu bar.">
-</picture>
+# ClipLine · 图绳
 
-<h3 align="center"><a href="https://tendedero.app/?lang=en">Try it in your browser at tendedero.app&nbsp;&rsaquo;</a></h3>
+Mac 截图与可编辑便签的桌面挂绳。基于 [Tendedero v1.6.1](https://github.com/alejandrobujan/tendedero) 独立修改，使用自己的名称和图标，当前版本 **1.7.1**。
 
-<p align="center">
-  Free and open source. For macOS 14 and later.
-  <br>
-  <a href="../../releases/latest">Download&nbsp;&rsaquo;</a>
-  &nbsp;&nbsp;
-  <a href="#build-from-source">Build from source&nbsp;&rsaquo;</a>
-  <br><br>
-  English&nbsp;·&nbsp;<a href="docs/i18n/README.es.md">Español</a>&nbsp;·&nbsp;<a href="docs/i18n/README.gl.md">Galego</a>&nbsp;·&nbsp;<a href="docs/i18n/README.fr.md">Français</a>&nbsp;·&nbsp;<a href="docs/i18n/README.pt-BR.md">Português (Brasil)</a>&nbsp;·&nbsp;<a href="docs/i18n/README.ja.md">日本語</a>&nbsp;·&nbsp;<a href="docs/i18n/README.ko.md">한국어</a>&nbsp;·&nbsp;<a href="docs/i18n/README.zh-Hans.md">简体中文</a>&nbsp;·&nbsp;<a href="docs/i18n/README.tr.md">Türkçe</a>&nbsp;·&nbsp;<a href="docs/i18n/README.az.md">Azərbaycanca</a>&nbsp;·&nbsp;<a href="docs/i18n/README.hi.md">हिन्दी</a>
-</p>
+## 文字便签
 
-<p align="center">
-  <a href="https://trendshift.io/repositories/287033?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-287033" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/287033/daily?language=Swift" alt="alejandrobujan%2Ftendedero | Trendshift" width="250" height="55"/></a>
-  <a href="https://trendshift.io/repositories/287033?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-287033" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/287033/weekly?language=Swift" alt="alejandrobujan%2Ftendedero | Trendshift" width="250" height="55"/></a>
-</p>
+- 展开挂绳，点击右侧的空夹子，出现一张可直接填写的纸张。
+- 输入后自动保存；双击卡片继续编辑，单击复制完整文字。
+- 保留换行、缩进与 Unicode；重启后保留内容。
+- 普通文字复制粘贴不会自动挂卡，没有文字剪贴板收集器。
+- 便签拖出时提供纯文字和 TXT 副本，内部存储格式不出现在普通使用流程。
+- 取下便签保留本地数据；明确移到废纸篓才删除。
 
-<br>
+## 快捷键
 
-## Out of sight. Within reach.
+| 操作 | 按键 |
+|---|---|
+| 框选截图 | 同时按 Q+A |
+| 展示 / 收起挂绳 | 同时按 Shift+Q+A |
 
-Every screenshot you take hangs on a line just above your screen.
-Rest the pointer in the menu bar and it glides down. Move away and it's gone.
+两字母需要在 220 ms 内按下且按住重叠。Shift 优先选择展示操作，每次完全释放后才能再次触发。普通不重叠的 Q/A 输入和 Command、Control、Option 快捷键继续传递。
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-dark.gif">
-  <img src="docs/images/demo-light.gif" alt="The pointer rests against the top edge, the line slides down with three screenshots swinging gently, a click copies one, and the line tucks away when the pointer leaves.">
-</picture>
+应用菜单提供截图、显示、新建便签及快捷键授权入口。首次使用全局键需要在 **系统设置 → 隐私与安全性 → 辅助功能**允许 ClipLine；框选截图还需要允许屏幕录制。系统安全输入模式可能屏蔽全局事件，应用不绕过系统限制。
 
-<br>
-<br>
+## Botmux 联动
 
-## A gesture for everything.
+使用 [clipline-botmux Skill](skills/clipline-botmux/SKILL.md)：
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/bento-dark.png">
-  <img src="docs/images/bento-light.png" alt="Click to copy. Hold to mark up. Drag to share. Let it go.">
-</picture>
-
-<br>
-<br>
-
-| | |
-|:--|:--|
-| Click | Copy the image. |
-| Press and hold | Open it in Markup. |
-| Double click | Open it in Preview. |
-| Force click | Take a quick look. |
-| Drag into an app | Send a copy. It stays on the line. |
-| Drag into a folder | Keep it there. It leaves the line. |
-| Drag to the Trash, or click the cross | Let it go. |
-| Rest the pointer in the menu bar | Bring the line down on that screen. |
-| Click anything in the menu bar | Put it away. |
-| <kbd>⌃</kbd>&thinsp;<kbd>⌥</kbd>&thinsp;<kbd>T</kbd> | Show or hide the line. Change it under Shortcut in the menu bar. |
-
-<br>
-
-## Your Desktop. Finally clear.
-
-Hand Tendedero your screenshots<sup>1</sup> and they skip the Desktop
-entirely. No floating thumbnail. No five-second wait. Each capture hangs
-the instant you take it, and only what you drag out is kept.
-
-Screen recordings hang there too, with a play button over them.
-Press and hold one to trim it.
-
-Same shortcuts. Same muscle memory. Just less mess.
-
-<br>
-
-## Copied images too.
-
-Take a screenshot with <kbd>⌃</kbd> held, or copy an image in Preview, and it
-hangs on the line like any other. Turn on Hang copied images in the menu bar
-and the shirt fills in while it is on. Only images: anything copied along
-with text or a file, and anything a password manager marks as private, is
-left alone.
-
-<br>
-
-## Private by design.
-
-No account. No network. No analytics.
-Tendedero runs entirely on your Mac, and your screenshots never leave it.
-
-<br>
-
-## Tech Specs
-
-| | |
-|:--|:--|
-| **Compatibility** | macOS 14 Sonoma or later, on Apple silicon and Intel. Designed for macOS 27. |
-| **Size** | 1.7 MB |
-| **Languages** | English, Spanish, Galician, French, Portuguese (Brazil), Japanese, Korean, Chinese (Simplified), Turkish, Azerbaijani, Hindi |
-| **Built with** | Swift, AppKit and SwiftUI |
-| **Network access** | None |
-| **Price** | Free |
-| **License** | MIT for the code. The name and icon are not included. |
-
-<br>
-
-## Install
-
-Download the disk image from the [latest release](../../releases/latest),
-open it and drag Tendedero to Applications. Or install it with Homebrew:
-
-```sh
-brew install --cask alejandrobujan/tap/tendedero
+```text
+图绳
+这周的待办：
+1. 核对评测结果
+2. 更新交付文档
 ```
 
-Tendedero is signed with a Developer ID and notarized by Apple, so it opens
-like any other app.
+Bot 把明确指定的正文挂成便签，收到应用回执后读回全文验证。也支持单独说“图绳”，再发送同一话题、同一发起人的下一条待挂消息，十分钟内有效。
 
-<br>
+缺少应用时，Skill 从本仓库 Release 下载并校验安装包，安装到 `~/Applications/ClipLine.app`；没有安装包时从本仓库对应版本标签构建。便签和回执在 `~/Library/Application Support/ClipLine`，不上传网络。
 
-## Build from source
+## 安装与构建
 
-```sh
-git clone git@github.com:alejandrobujan/tendedero.git
-cd tendedero
-scripts/build-app.sh
-open build/Tendedero.app
+下载本仓库 [最新版](https://github.com/xinna2001/tendedero/releases/latest) 的 `ClipLine-*-macos-universal.zip`，解压后放到「应用程序」。支持 macOS 14+、Apple silicon 与 Intel。本地构建包使用本机可用的 Developer ID 或 ad hoc 签名；不声称已经 Apple 公证。
+
+```bash
+bash scripts/build-app.sh release
+swift run ClipLineCoreChecks
+swift scripts/check-strings.swift
 ```
 
-Requires the Swift toolchain. Xcode is optional. With the Command Line Tools for macOS 27, the script falls back to the macOS 26 SDK they install alongside, because the new SDK needs a SwiftUI macro plugin only Xcode includes. Local builds are signed ad hoc,
-so macOS asks again for access to the Desktop after each rebuild.
+仅验证本机架构时可以执行 `CLIPLINE_ARCHS=arm64 bash scripts/build-app.sh debug`。Debug 包在独立 `CLIPLINE_DATA_ROOT` 下可用 `--ui-checks` 验证空夹子、实际编辑、复制与持久化，并生成界面截图。Release 不包含该验证入口。
 
-<details>
-<summary>Inside the app</summary>
-<br>
+## 来源与许可
 
-| File | Role |
-|:--|:--|
-| `AppDelegate.swift` | Menu bar, shortcut, revealing and tucking away the line |
-| `LinePanel.swift` | The transparent strip along the top of the screen |
-| `LineView.swift` | The line and where each photo hangs |
-| `PeggedView.swift` | One photo: glass frame, clip, swing and breeze |
-| `GrabArea.swift` | Click, long press, drag and drop |
-| `ScreenshotWatcher.swift` | Notices new screenshots |
-| `ClipboardWatcher.swift` | Notices images copied to the clipboard |
-| `Inbox.swift` | Takes over screenshot settings and puts them back |
-| `Markup.swift` | Opens the system Markup editor and saves the result |
-| `Trim.swift` | Trims a screen recording and saves the result |
-| `FullScreen.swift` | Knows when to stay hidden |
-| `Line.swift` | What is hanging, and what you can do with it |
+源代码 MIT，保留上游版权。上游名称、图标及品牌条款见 [LICENSE](LICENSE)，来源说明见 [NOTICE](NOTICE)。本项目不代表上游作者。
 
-Every image here, the icon included, is drawn in code by
-`scripts/make-icon.swift` and `scripts/make-readme-art.swift`.
-`scripts/make-dmg.sh` builds the disk image for releases.
-
-Translations live in `Sources/Tendedero/Resources`, one `.lproj` folder per
-language. `swift scripts/check-strings.swift` checks that none is missing.
-
-</details>
-
-<br>
-
----
-
-<sub>
-1. On first launch, Tendedero offers to handle your screenshots. If you accept, it turns off the floating thumbnail and saves new screenshots to its own folder, two settings also found under Options in Cmd+Shift+5. Your previous settings are saved and restored when Tendedero quits or the option is turned off from the menu bar. Tendedero hides automatically while an app is in full screen.
-</sub>
-
-<br>
-<br>
-
-<p align="center">
-  <img src="docs/images/icon.png" width="64" height="64" alt="">
-  <br>
-  <sub>The code is MIT licensed. The Tendedero name and icon are not, so forks need their own. See <a href="LICENSE">LICENSE</a>.</sub>
-  <br>
-  <sub>Designed and built by <a href="https://alejandrobujan.com">Alejandro Buján</a>.</sub>
-</p>
+文字卡片交互参考上游 [PR #12](https://github.com/alejandrobujan/tendedero/pull/12)，采用手动新建方式，正文不经由剪贴板自动收集。
