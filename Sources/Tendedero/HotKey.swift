@@ -32,7 +32,7 @@ final class HotKey {
     }
 }
 
-/// The shortcut that shows and hides the line: ⌃⌥T unless changed, or none.
+/// An optional fallback shortcut; Shift+Q+A is handled by ChordMonitor.
 struct Shortcut: Equatable {
     var keyCode: Int
     var modifiers: NSEvent.ModifierFlags
@@ -46,13 +46,13 @@ struct Shortcut: Equatable {
     /// The user's choice. Nil means no shortcut at all.
     static var current: Shortcut? {
         get {
-            guard let saved = UserDefaults.standard.dictionary(forKey: defaultsKey) else { return standard }
+            guard let saved = ClipSettings.defaults.dictionary(forKey: defaultsKey) else { return nil }
             guard let code = saved["keyCode"] as? Int, let flags = saved["modifiers"] as? UInt,
                   let key = saved["key"] as? String else { return nil }
             return Shortcut(keyCode: code, modifiers: NSEvent.ModifierFlags(rawValue: flags), key: key)
         }
         set {
-            UserDefaults.standard.set(newValue.map {
+            ClipSettings.defaults.set(newValue.map {
                 ["keyCode": $0.keyCode, "modifiers": $0.modifiers.rawValue, "key": $0.key] as [String: Any]
             } ?? [:], forKey: defaultsKey)
         }

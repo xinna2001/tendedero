@@ -4,6 +4,8 @@ import Combine
 import Quartz
 import ServiceManagement
 import SwiftUI
+import ClipLineCore
+import ApplicationServices
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -23,6 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hotKey: HotKey?
     private var cancellables = Set<AnyCancellable>()
     private var mouseTimer: Timer?
+    private let noteEditor = NoteEditor()
+    private let chordMonitor = ChordMonitor()
+    private let regionCapture = RegionCapture()
+    private let bridge = AppBridge()
+    private static let systemChordsEnabled = ProcessInfo.processInfo.environment["CLIPLINE_DATA_ROOT"] == nil
 
     /// Whether the panel is ordered in. It can be in and still tucked away
     /// above the top edge, like an auto-hiding Dock.
@@ -55,15 +62,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Resting the pointer in the menu bar. Off, only the shortcut and the
     /// menu open it.
     static var opensFromMenuBar: Bool {
-        get { !UserDefaults.standard.bool(forKey: "menuBarRevealOff") }
-        set { UserDefaults.standard.set(!newValue, forKey: "menuBarRevealOff") }
+        get { !ClipSettings.defaults.bool(forKey: "menuBarRevealOff") }
+        set { ClipSettings.defaults.set(!newValue, forKey: "menuBarRevealOff") }
     }
 
     /// Something new hanging shows itself for a moment. Off, it hangs
     /// quietly and waits for you to bring the line down.
     static var peeksAtNew: Bool {
-        get { !UserDefaults.standard.bool(forKey: "quietHang") }
-        set { UserDefaults.standard.set(!newValue, forKey: "quietHang") }
+        get { !ClipSettings.defaults.bool(forKey: "quietHang") }
+        set { ClipSettings.defaults.set(!newValue, forKey: "quietHang") }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -72,6 +79,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel = LinePanel(content: host)
         panel.placeOnScreen()
         updateCapacity()
+
+        line.onNewNote = { [weak self] in self?.newNote() }
+        line.onEditNote = { [weak self] id in self?.editNote(id) }
+        noteEditor.onSaved = { [weak self] url in self?.line.reloadThumbnail(for: url) }
+        noteEditor.onClosed = { [weak self] in self?.awaySince = nil }
+        chordMonitor.onAction = { [weak self] action in
+            if action == .toggle { self?.toggle() } else { self?.captureRegion() }
+        }
+        if Self.systemChordsEnabled { _ = chordMonitor.start() }
+        regionCapture.onCaptured = { [weak self] url in self?.hangCapture(url) }
+        regionCapture.onError = { [weak self] message in self?.showError(message) }
+        bridge.onCommand = { [weak self] request in
+            guard let self else { throw BridgeError.invalidRequest }
+            return try self.bridgeCommand(request)
+        }
+        bridge.onStatus = { [weak self] in
+            ["shown": self?.isRevealed ?? false,
+             "notes": (try? ClipPaths.notes.all().count) ?? 0,
+             "globalChordsActive": self?.chordMonitor.isRunning ?? false,
+             "accessibilityTrusted": AXIsProcessTrusted(),
+             "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
+             "captureShortcut": "Q+A", "toggleShortcut": "Shift+Q+A"]
+        }
+        do { try bridge.start() } catch { showError(error.localizedDescription) }
 
         if Inbox.isEnabled { Inbox.apply() }
         restoreSettingsOnTermination()
@@ -127,12 +158,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
-        if !Inbox.wasOffered {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.offerInbox() }
-        }
+        // Q+A saves its capture directly; system screenshot settings stay
+        // unchanged unless the user enables inbox mode from the menu.
+        Inbox.wasOffered = true
 
-        if !UserDefaults.standard.bool(forKey: "welcomed") {
-            UserDefaults.standard.set(true, forKey: "welcomed")
+        if !ClipSettings.defaults.bool(forKey: "welcomed") {
+            ClipSettings.defaults.set(true, forKey: "welcomed")
             keepOpen = true
             wanted = true
             refresh()
@@ -144,11 +175,153 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.refresh()
             }
         }
+        #if DEBUG
+        if CommandLine.arguments.contains("--ui-checks"), ProcessInfo.processInfo.environment["CLIPLINE_DATA_ROOT"] != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.runUIChecks() }
+        }
+        #endif
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        _ = noteEditor.save()
+        chordMonitor.stop()
         if Inbox.isEnabled { Inbox.restore() }
     }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        noteEditor.save() ? .terminateNow : .terminateCancel
+    }
+
+    // MARK: Manual notes and local Botmux bridge
+
+    private func showLine() {
+        keepOpen = true; wanted = true; openedOnPurpose = true
+        panel.placeOnScreen(); updateCapacity(); refresh(); reveal(pinned: true)
+    }
+
+    private func newNote() {
+        do {
+            let note = try ClipPaths.notes.create()
+            guard let id = line.hang(ClipPaths.notes.url(for: note.id)) else { throw NoteStoreError.invalidRecord }
+            showLine()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.editNote(id) }
+        } catch { showError(error.localizedDescription) }
+    }
+
+    private func editNote(_ id: UUID) {
+        do {
+            let note = try ClipPaths.notes.read(id)
+            showLine()
+            let rect = line.hitRects[id] ?? line.hitRects[Line.emptyClipID]
+            let anchor = NSPoint(x: panel.frame.minX + (rect?.midX ?? panel.frame.width / 2),
+                                 y: panel.frame.maxY - (rect?.minY ?? 30))
+            noteEditor.open(note, store: ClipPaths.notes, anchor: anchor)
+        } catch { showError(error.localizedDescription) }
+    }
+
+    private func captureRegion() {
+        guard !regionCapture.isCapturing, noteEditor.close() else { return }
+        setRevealed(false)
+        panel.orderOut(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.regionCapture.capture() }
+    }
+
+    private func bridgeCommand(_ request: BridgeRequest) throws -> BridgeReceipt {
+        var note: NoteRecord?
+        switch request.operation {
+        case "note.add": note = try ClipPaths.notes.create(text: request.text!, id: request.id)
+        case "note.update":
+            try noteEditor.prepareExternalUpdate(request.noteID!)
+            note = try ClipPaths.notes.update(request.noteID!, text: request.text!, expectedRevision: request.expectedRevision!)
+            if let note { noteEditor.refresh(note) }
+        case "line.show": showLine()
+        case "line.hide":
+            guard noteEditor.close() else { throw NoteStoreError.conflict }
+            setRevealed(false)
+        case "note.list": return BridgeReceipt(id: request.id, success: true, notes: try ClipPaths.notes.all(), shown: isRevealed)
+        default: throw BridgeError.invalidRequest
+        }
+        if let note {
+            let url = ClipPaths.notes.url(for: note.id)
+            _ = line.hang(url)
+            line.reloadThumbnail(for: url)
+            showLine()
+        }
+        return BridgeReceipt(id: request.id, success: true, note: note, shown: isRevealed)
+    }
+
+    private func showError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "ClipLine · 图绳"
+        alert.informativeText = message
+        alert.addButton(withTitle: L("OK"))
+        alert.runModal()
+    }
+
+    #if DEBUG
+    private func runUIChecks() {
+        showLine()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            guard let self else { return }
+            let originalCount = self.line.liveCount
+            if let rect = self.line.hitRects[Line.emptyClipID] {
+                let point = NSPoint(x: rect.midX, y: self.panel.frame.height - rect.midY)
+                self.panel.ignoresMouseEvents = false
+                for (type, offset) in [(NSEvent.EventType.leftMouseDown, 0.0), (.leftMouseUp, 0.05)] {
+                    if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                        timestamp: ProcessInfo.processInfo.systemUptime + offset,
+                        windowNumber: self.panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1) {
+                        self.panel.sendEvent(event)
+                    }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                let clicked = self.line.liveCount == originalCount + 1
+                let sample = "图绳便签\n\n点空夹子创建纸张\n双击修改，自动保存\n\nQ+A：框选截图\nShift+Q+A：展示 / 收起"
+                let editorWorked = self.noteEditor.insertForUIChecks(sample)
+                guard let note = try? ClipPaths.notes.all().last else {
+                    try? Data("{\"success\":false,\"emptyClipClicked\":\(clicked)}".utf8)
+                        .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
+                    NSApp.terminate(nil); return
+                }
+                let clipboard = NSPasteboard.general
+                let before = (clipboard.pasteboardItems ?? []).map { item in
+                    item.types.compactMap { type in item.data(forType: type).map { (type, $0) } }
+                }
+                self.line.copy(note.id)
+                let copied = clipboard.string(forType: .string) == sample
+                let count = clipboard.changeCount
+                if clipboard.changeCount == count {
+                    clipboard.clearContents()
+                    let restored = before.map { entry -> NSPasteboardItem in
+                        let item = NSPasteboardItem()
+                        for (type, data) in entry { item.setData(data, forType: type) }
+                        return item
+                    }
+                    clipboard.writeObjects(restored)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    if let view = self.panel.contentView {
+                        let region = self.line.hitRects.values.reduce(CGRect.null) { $0.union($1) }
+                            .insetBy(dx: -45, dy: -30).intersection(view.bounds)
+                        if !region.isNull, let bitmap = view.bitmapImageRepForCachingDisplay(in: region) {
+                            view.cacheDisplay(in: region, to: bitmap)
+                            try? bitmap.representation(using: .png, properties: [:])?
+                                .write(to: ClipPaths.base.appendingPathComponent("line-preview.png"))
+                        }
+                    }
+                    let persisted = (try? ClipPaths.notes.read(note.id).text) == sample
+                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted,
+                        "emptyClipClicked": clicked, "editorWorked": editorWorked,
+                        "clipboardTextExact": copied, "persistedTextExact": persisted, "noteID": note.id.uuidString]
+                    try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted])
+                        .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
+                    NSApp.terminate(nil)
+                }
+            }
+        }
+    }
+    #endif
 
     // MARK: Inbox mode
 
@@ -193,14 +366,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// them hang like screenshots; taking one down leaves the file there.
     static var extraFolders: [URL] {
         get {
-            let paths = UserDefaults.standard.stringArray(forKey: "extraFolders") ?? []
+            let paths = ClipSettings.defaults.stringArray(forKey: "extraFolders") ?? []
             return paths.compactMap { path in
                 var isDir: ObjCBool = false
                 guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else { return nil }
                 return URL(fileURLWithPath: path, isDirectory: true)
             }
         }
-        set { UserDefaults.standard.set(newValue.map(\.path), forKey: "extraFolders") }
+        set { ClipSettings.defaults.set(newValue.map(\.path), forKey: "extraFolders") }
     }
 
     private func chooseExtraFolder() {
@@ -232,7 +405,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             "Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits.")
         alert.addButton(withTitle: L("Turn on"))
         alert.addButton(withTitle: L("Not now"))
-        if let icon = NSImage(named: "Tendedero") ?? NSApp.applicationIconImage { alert.icon = icon }
+        if let icon = NSApp.applicationIconImage { alert.icon = icon }
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn { setInbox(true) }
     }
@@ -250,7 +423,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for sig in [SIGTERM, SIGINT, SIGHUP] {
             signal(sig, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-            source.setEventHandler {
+            source.setEventHandler { [weak self] in
+                guard self?.noteEditor.save() != false else { return }
                 if Inbox.isEnabled { Inbox.restore() }
                 exit(0)
             }
@@ -362,7 +536,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         // The cursor is watched while there is a line, even tucked away,
         // to notice it pushing against the top edge.
-        if wanted { startMouseTracking() } else { stopMouseTracking() }
+        if wanted || Self.opensFromMenuBar { startMouseTracking() } else { stopMouseTracking() }
     }
 
     private func present() {
@@ -450,6 +624,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggle() {
         if isRevealed {
+            guard noteEditor.close() else { return }
             setRevealed(false)
         } else {
             keepOpen = true
@@ -516,6 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let retractDelay: TimeInterval = 0.5
 
     private func tick() {
+        if Self.systemChordsEnabled, !chordMonitor.isRunning, AXIsProcessTrusted() { _ = chordMonitor.start() }
         let mouse = NSEvent.mouseLocation
         let now = Date()
 
@@ -529,7 +705,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // when another display sits above and the pointer never stops.
             // An empty line stays up there: only the shortcut and the menu
             // bring it down on purpose.
-            if line.liveCount > 0, Self.opensFromMenuBar, let screen = screenUnderPointer,
+            if Self.opensFromMenuBar, let screen = screenUnderPointer,
                inMenuBar, !menuBarSuppressed, !FullScreen.blocksLine(on: screen) {
                 let since = hotZoneSince ?? now
                 hotZoneSince = since
@@ -539,6 +715,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         panel.placeOnScreen()
                         updateCapacity()
                     }
+                    wanted = true
+                    keepOpen = true
                     refresh()
                     reveal()
                 }
@@ -558,7 +736,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if inside && pinned { pinned = false }
 
         let busy = pinned || GrabView.isDragging || GrabView.isShowingMenu
-            || line.pressedID != nil || now < peekUntil
+            || line.pressedID != nil || now < peekUntil || noteEditor.isEditing
         if inside || busy {
             awaySince = nil
         } else {
@@ -637,7 +815,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let usable = panel.frame.width - 200
         let fits = max(3, min(12, Int(usable / Layout.spacing)))
         line.visibleCount = fits
-        line.maxItems = max(fits, Line.keepOnLine ?? fits)
+        line.maxItems = max(fits - 1, Line.keepOnLine ?? (fits - 1))
     }
 
     // MARK: Menu bar
@@ -651,6 +829,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.autoenablesItems = false
         menu.delegate = self
         statusItem.menu = menu
+        menu.insertItem(ClosureMenuItem(L("New note")) { [weak self] in self?.newNote() }, at: 0)
+        menu.insertItem(ClosureMenuItem(L("Region capture · Q+A")) { [weak self] in self?.captureRegion() }, at: 1)
+        menu.insertItem(ClosureMenuItem(L("Enable Q+A / Shift+Q+A shortcuts…")) { [weak self] in
+            if self?.chordMonitor.start(prompt: true) != true {
+                self?.showError(L("Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again."))
+            }
+        }, at: 2)
     }
 
     /// The shirt fills in while copied images are hung, so it shows at a
@@ -660,7 +845,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateStatusIcon() {
         let on = ClipboardWatcher.isEnabled
         let count = line.liveCount
-        let description = on ? L("Tendedero, hanging copied images") : "Tendedero"
+        let description = on ? L("Tendedero, hanging copied images") : "ClipLine"
         let state = count == 0 ? L("The line is empty") : String(format: L("%d on the line"), count)
         let image = NSImage(systemSymbolName: on ? "tshirt.fill" : "tshirt",
                             accessibilityDescription: "\(description), \(state)")

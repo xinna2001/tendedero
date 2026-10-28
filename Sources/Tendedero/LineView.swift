@@ -17,8 +17,8 @@ enum Layout {
     }
 
     static var size: Size {
-        get { Size(rawValue: UserDefaults.standard.string(forKey: "lineSize") ?? "") ?? .medium }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "lineSize") }
+        get { Size(rawValue: ClipSettings.defaults.string(forKey: "lineSize") ?? "") ?? .medium }
+        set { ClipSettings.defaults.set(newValue.rawValue, forKey: "lineSize") }
     }
 
     static var photoMaxHeight: CGFloat { (104 * size.scale).rounded() }
@@ -62,15 +62,9 @@ struct LineView: View {
             ZStack(alignment: .topLeading) {
                 Rope(width: width)
 
-                if line.items.isEmpty {
-                    Hint()
-                        .position(x: width / 2, y: Layout.ropeY(x: width / 2, width: width) + 34)
-                        .transition(.opacity)
-                }
-
                 ForEach(Array(line.items.enumerated()), id: \.element.id) { index, item in
-                    let x = Layout.x(index: index, count: line.items.count, width: width,
-                                     visible: line.visibleCount, scroll: line.scroll)
+                    let x = Layout.x(index: index, count: line.items.count, width: max(0, width - Layout.spacing),
+                                     visible: max(1, line.visibleCount - 1), scroll: line.scroll)
                     let ropeY = Layout.ropeY(x: x, width: width)
                     PeggedView(item: item, line: line)
                         .frame(width: Layout.cardWidth, height: Layout.panelHeight - ropeY, alignment: .top)
@@ -78,6 +72,9 @@ struct LineView: View {
                         .opacity(min(1, max(0, min(x, width - x) / 90)))
                         .position(x: x, y: ropeY - Layout.pinAbove + (Layout.panelHeight - ropeY) / 2)
                 }
+                let addX = max(65, width - 105)
+                EmptyNoteClip(action: { line.onNewNote() })
+                    .position(x: addX, y: Layout.ropeY(x: addX, width: width) + 19)
             }
             .animation(.spring(response: 0.55, dampingFraction: 0.78), value: line.items.map(\.id))
             .animation(.easeInOut(duration: 0.3), value: line.items.isEmpty)
@@ -90,6 +87,29 @@ struct LineView: View {
         .onPreferenceChange(HitRectsKey.self) { rects in
             line.hitRects = rects
         }
+    }
+}
+
+private struct EmptyNoteClip: View {
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Clothespin().frame(width: 38, height: 30)
+                Text(L("New note"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 90, height: 62)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(L("Click the empty clip to write a note"))
+        .accessibilityLabel(L("New note"))
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: HitRectsKey.self,
+                                   value: [Line.emptyClipID: geometry.frame(in: .global)])
+        })
     }
 }
 

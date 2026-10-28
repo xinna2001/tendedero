@@ -2,12 +2,13 @@ import AppKit
 import AVFoundation
 import Combine
 import os
+import ClipLineCore
 
-let log = Logger(subsystem: "app.tendedero.Tendedero", category: "line")
+let log = Logger(subsystem: "com.xinna2001.ClipLine", category: "line")
 
 /// One screenshot hanging on the line.
 struct Pegged: Identifiable, Equatable {
-    let id = UUID()
+    let id: UUID
     let url: URL
     var thumb: NSImage
     /// Every photo hangs a little crooked, like on a real line.
@@ -17,6 +18,12 @@ struct Pegged: Identifiable, Equatable {
     var flying = false
     /// A screen recording rather than a screenshot.
     var isRecording: Bool { Tendedero.isRecording(url) }
+    var isNote: Bool { url.pathExtension == "clipnote" }
+
+    init(url: URL, thumb: NSImage) {
+        self.url = url; self.thumb = thumb
+        self.id = (url.pathExtension == "clipnote" ? UUID(uuidString: url.deletingPathExtension().lastPathComponent) : nil) ?? UUID()
+    }
 
     static func == (a: Pegged, b: Pegged) -> Bool {
         a.id == b.id && a.falling == b.falling && a.flying == b.flying && a.thumb === b.thumb
@@ -38,6 +45,9 @@ final class Line: ObservableObject {
     /// Card frames in window coordinates, reported by the views. The panel
     /// uses them to only catch clicks over photos and let the rest through.
     var hitRects: [UUID: CGRect] = [:]
+    static let emptyClipID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    var onNewNote: () -> Void = {}
+    var onEditNote: (UUID) -> Void = { _ in }
 
     var maxItems = 8
     /// How many photos fit across the screen. With Keep on line set, the
@@ -52,16 +62,16 @@ final class Line: ObservableObject {
     nonisolated static let keepChoices = [25, 50, 100]
     nonisolated static var keepOnLine: Int? {
         get {
-            let n = UserDefaults.standard.integer(forKey: "keepOnLine")
+            let n = ClipSettings.defaults.integer(forKey: "keepOnLine")
             return keepChoices.contains(n) ? n : nil
         }
-        set { UserDefaults.standard.set(newValue ?? 0, forKey: "keepOnLine") }
+        set { ClipSettings.defaults.set(newValue ?? 0, forKey: "keepOnLine") }
     }
 
 
     var soundOn: Bool {
-        get { !UserDefaults.standard.bool(forKey: "soundOff") }
-        set { UserDefaults.standard.set(!newValue, forKey: "soundOff") }
+        get { !ClipSettings.defaults.bool(forKey: "soundOff") }
+        set { ClipSettings.defaults.set(!newValue, forKey: "soundOff") }
     }
 
     var liveCount: Int { items.filter { !$0.falling }.count }
@@ -157,8 +167,10 @@ final class Line: ObservableObject {
         guard let item = items.first(where: { $0.id == id }) else { return }
         let entry = NSPasteboardItem()
         // A recording is copied as the file, which apps paste as the video.
-        if !item.isRecording, let png = pngData(item.url) { entry.setData(png, forType: .png) }
-        entry.setString(item.url.absoluteString, forType: .fileURL)
+        if item.isNote, let note = try? NoteStore.decode(item.url) {
+            entry.setString(note.text, forType: .string)
+        } else if !item.isRecording, let png = pngData(item.url) { entry.setData(png, forType: .png) }
+        if !item.isNote { entry.setString(item.url.absoluteString, forType: .fileURL) }
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.writeObjects([entry])
@@ -215,7 +227,7 @@ final class Line: ObservableObject {
     /// of that folder. If the Trash refuses it, it still leaves the line.
     /// Moves along a line that holds more than fit, from a scroll gesture.
     func scroll(by delta: CGFloat) {
-        let most = CGFloat(max(0, items.count - visibleCount)) * Layout.spacing
+        let most = CGFloat(max(0, items.count - (visibleCount - 1))) * Layout.spacing
         let next = min(most, max(0, scroll + delta))
         if next != scroll { scroll = next }
     }
@@ -264,7 +276,9 @@ final class Line: ObservableObject {
     /// not edit video, so a recording opens in the trimming editor instead.
     func markup(_ id: UUID) {
         guard let item = items.first(where: { $0.id == id }) else { return }
-        if item.isRecording {
+        if item.isNote {
+            onEditNote(item.id)
+        } else if item.isRecording {
             Trim.shared.edit(item.url, size: item.thumb.size)
         } else {
             Markup.shared.edit(item.url)
@@ -313,14 +327,14 @@ final class Line: ObservableObject {
 
     private func save() {
         let paths = items.filter { !$0.falling }.map(\.url.path)
-        UserDefaults.standard.set(paths, forKey: storeKey)
+        ClipSettings.defaults.set(paths, forKey: storeKey)
     }
 
     /// Everything comes back as it was. This runs before the line knows its
     /// screen, so the capacity is still the default one: hanging through
     /// `hang` would let photos fall off a wide screen's line at every launch.
     private func restore() {
-        let paths = UserDefaults.standard.stringArray(forKey: storeKey) ?? []
+        let paths = ClipSettings.defaults.stringArray(forKey: storeKey) ?? []
         for path in paths where FileManager.default.fileExists(atPath: path) {
             let url = URL(fileURLWithPath: path)
             guard !items.contains(where: { $0.url == url }), let thumb = makeThumbnail(url) else { continue }
@@ -352,6 +366,7 @@ func isRecording(_ url: URL) -> Bool {
 /// The default size covers a card at twice its size in points, as on a
 /// Retina screen, and no more: every photo on the line keeps one in memory.
 func makeThumbnail(_ url: URL, maxPixels: Int = Int(320 * Layout.size.scale)) -> NSImage? {
+    if url.pathExtension == "clipnote" { return makeNoteThumbnail(url, maxPixels: maxPixels) }
     if isRecording(url) { return firstFrame(url, maxPixels: maxPixels) }
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
     let options: [CFString: Any] = [
@@ -361,6 +376,25 @@ func makeThumbnail(_ url: URL, maxPixels: Int = Int(320 * Layout.size.scale)) ->
     ]
     guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
     return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+}
+
+/// Only the preview is abbreviated; the full text stays in NoteStore.
+func makeNoteThumbnail(_ url: URL, maxPixels: Int) -> NSImage? {
+    guard let note = try? NoteStore.decode(url) else { return nil }
+    let image = NSImage(size: NSSize(width: 360, height: 280))
+    image.lockFocus()
+    NSColor(srgbRed: 1, green: 0.975, blue: 0.86, alpha: 1).setFill()
+    NSRect(x: 0, y: 0, width: 360, height: 280).fill()
+    let text = note.text.isEmpty ? L("Double-click to write a note") : String(note.text.prefix(4000))
+    let style = NSMutableParagraphStyle()
+    style.lineBreakMode = .byWordWrapping
+    style.lineSpacing = 4
+    NSAttributedString(string: text, attributes: [
+        .font: NSFont.systemFont(ofSize: 23), .foregroundColor: NSColor.darkGray, .paragraphStyle: style
+    ]).draw(with: NSRect(x: 22, y: 20, width: 316, height: 240),
+            options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+    image.unlockFocus()
+    return image
 }
 
 /// A recording shows its first frame.
