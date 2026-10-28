@@ -32,40 +32,10 @@ final class HotKey {
     }
 }
 
-/// An optional fallback shortcut; Shift+Q+A is handled by ChordMonitor.
-struct Shortcut: Equatable {
+struct Shortcut {
     var keyCode: Int
     var modifiers: NSEvent.ModifierFlags
-    /// The key as typed, for the menu: "t", " ", "1".
     var key: String
-
-    static let standard = Shortcut(keyCode: kVK_ANSI_T, modifiers: [.control, .option], key: "t")
-
-    private static let defaultsKey = "shortcut"
-
-    /// The user's choice. Nil means no shortcut at all.
-    static var current: Shortcut? {
-        get {
-            guard let saved = ClipSettings.defaults.dictionary(forKey: defaultsKey) else { return nil }
-            guard let code = saved["keyCode"] as? Int, let flags = saved["modifiers"] as? UInt,
-                  let key = saved["key"] as? String else { return nil }
-            return Shortcut(keyCode: code, modifiers: NSEvent.ModifierFlags(rawValue: flags), key: key)
-        }
-        set {
-            ClipSettings.defaults.set(newValue.map {
-                ["keyCode": $0.keyCode, "modifiers": $0.modifiers.rawValue, "key": $0.key] as [String: Any]
-            } ?? [:], forKey: defaultsKey)
-        }
-    }
-
-    /// From a key press, if it makes a usable global shortcut: it needs
-    /// Command, Control or Option, so typing alone never triggers it.
-    init?(event: NSEvent) {
-        let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
-        guard !flags.intersection([.command, .control, .option]).isEmpty,
-              let key = event.charactersIgnoringModifiers?.lowercased(), !key.isEmpty else { return nil }
-        self.init(keyCode: Int(event.keyCode), modifiers: flags, key: key)
-    }
 
     init(keyCode: Int, modifiers: NSEvent.ModifierFlags, key: String) {
         self.keyCode = keyCode
@@ -82,83 +52,4 @@ struct Shortcut: Equatable {
         return carbon
     }
 
-    /// As macOS writes it in menus: ⌃⌥⇧⌘ and the key.
-    var display: String {
-        var text = ""
-        if modifiers.contains(.control) { text += "⌃" }
-        if modifiers.contains(.option) { text += "⌥" }
-        if modifiers.contains(.shift) { text += "⇧" }
-        if modifiers.contains(.command) { text += "⌘" }
-        return text + (key == " " ? L("Space") : key.uppercased())
-    }
-}
-
-/// Asks for a new shortcut in a small window: the next key press with
-/// Command, Control or Option becomes it. Escape cancels and Delete leaves
-/// the line without a shortcut.
-@MainActor
-final class ShortcutRecorder: NSObject, NSWindowDelegate {
-    static let shared = ShortcutRecorder()
-
-    private var window: NSWindow?
-    private var monitor: Any?
-    private var done: ((Shortcut??) -> Void)?
-
-    /// Calls back with the new shortcut, `.some(nil)` for none, or nil if
-    /// cancelled.
-    func record(_ done: @escaping (Shortcut??) -> Void) {
-        finish(nil)
-        self.done = done
-
-        let title = NSTextField(labelWithString: L("Press the new shortcut"))
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
-        let hint = NSTextField(labelWithString: L("Escape cancels. Delete removes the shortcut."))
-        hint.font = .systemFont(ofSize: 12)
-        hint.textColor = .secondaryLabelColor
-        let stack = NSStackView(views: [title, hint])
-        stack.orientation = .vertical
-        stack.spacing = 6
-        stack.edgeInsets = NSEdgeInsets(top: 22, left: 28, bottom: 22, right: 28)
-
-        let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = L("Change Shortcut")
-        window.contentView = stack
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.center()
-        self.window = window
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.window === self.window else { return event }
-            let plain = event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
-            if event.keyCode == UInt16(kVK_Escape) && plain {
-                self.finish(nil)
-            } else if (event.keyCode == UInt16(kVK_Delete) || event.keyCode == UInt16(kVK_ForwardDelete)) && plain {
-                self.finish(.some(nil))
-            } else if let shortcut = Shortcut(event: event) {
-                self.finish(.some(shortcut))
-            } else {
-                NSSound.beep()
-            }
-            return nil
-        }
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        guard (notification.object as? NSWindow) === window else { return }
-        window = nil
-        finish(nil)
-    }
-
-    private func finish(_ result: Shortcut??) {
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = nil
-        let done = self.done
-        self.done = nil
-        window?.close()
-        window = nil
-        done?(result)
-    }
 }

@@ -109,3 +109,14 @@ func checkThrows(_ value: @autoclosure () throws -> Any, file: StaticString = #f
     do { _ = try value(); preconditionFailure("Expected an error", file: file, line: line) } catch { }
 }
 try CoreChecks().run()
+
+var modifierState = ModifierShortcutState()
+checkEqual(modifierState.update(shift: false, capsLock: true), false)
+checkEqual(modifierState.update(shift: true, capsLock: true), true)
+checkEqual(modifierState.update(shift: true, capsLock: true), false)
+checkEqual(modifierState.update(shift: false, capsLock: true), false)
+checkEqual(modifierState.update(shift: true, capsLock: true), true)
+checkEqual(modifierState.update(shift: false, capsLock: false), false)
+checkEqual(modifierState.update(shift: true, capsLock: false), false)
+checkEqual(modifierState.update(shift: true, capsLock: true), true)
+print("PASS CapsLockShiftSelectionAndDebounce")

@@ -14,7 +14,7 @@
 "Sounds" = "声音";
 "Open at login" = "登录时打开";
 "Check for Updates…" = "检查更新…";
-"Quit Tendedero" = "退出 Tendedero";
+
 "Could not change the login setting" = "无法更改登录项设置";
 "Move Tendedero to the Applications folder and try again." = "请先把 Tendedero 移到「应用程序」文件夹，再试一次。";
 "Keep on line" = "绳上保留";
@@ -25,13 +25,12 @@
 "Stop Watching" = "停止监视";
 "Watch" = "监视";
 "New images saved to this folder will hang on the line." = "保存到此文件夹的新图片会挂到晾衣绳上。";
-"Shortcut" = "快捷键";
-"Change Shortcut…" = "更改快捷键…";
-"Change Shortcut" = "更改快捷键";
-"None" = "无";
-"Space" = "空格";
-"Press the new shortcut" = "请按下新的快捷键";
-"Escape cancels. Delete removes the shortcut." = "按 Esc 取消，按删除键移除快捷键。";
+
+
+
+
+
+
 "Size" = "大小";
 "Small" = "小";
 "Medium" = "中";
@@ -73,22 +72,18 @@
 "Note text" = "便签内容";
 "Saved locally" = "已保存到本机";
 "Saving…" = "正在保存…";
-"Region capture · Q+A" = "框选截图 · Q+A";
-"Enable Q+A / Shift+Q+A shortcuts…" = "启用 Q+A / Shift+Q+A 快捷键…";
-"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "请在系统设置 → 隐私与安全性 → 辅助功能中允许 ClipLine，然后重试。";
+
+
+
 "Screen capture needs Screen Recording permission in System Settings." = "框选截图需要在系统设置中允许 ClipLine 的屏幕录制权限。";
 
 "OK" = "好";
 
 "Delete note…" = "删除便签…";
 
-"Delete this note?" = "删除这张便签？";
 
-"The note will move to the Trash and can be restored there." = "便签将移到废纸篓，可在那里恢复。";
 
-"Delete" = "删除";
 
-"Cancel" = "取消";
 
 "Region capture" = "框选截图";
 
@@ -105,3 +100,9 @@
 "Paste" = "粘贴";
 
 "Select All" = "全选";
+
+"Region capture · Shift+Z" = "框选截图 · Shift+Z";
+
+"Show / hide · Caps Lock+Shift" = "显示 / 隐藏 · Caps Lock+Shift";
+
+"Screenshot permissions…" = "截图权限…";

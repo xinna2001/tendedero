@@ -14,7 +14,7 @@
 "Sounds" = "사운드";
 "Open at login" = "로그인 시 열기";
 "Check for Updates…" = "업데이트 확인…";
-"Quit Tendedero" = "Tendedero 종료";
+
 "Could not change the login setting" = "로그인 설정을 변경할 수 없음";
 "Move Tendedero to the Applications folder and try again." = "Tendedero를 응용 프로그램 폴더로 옮긴 다음 다시 시도하세요.";
 "Keep on line" = "빨랫줄에 남길 개수";
@@ -25,13 +25,12 @@
 "Stop Watching" = "지켜보기 중단";
 "Watch" = "지켜보기";
 "New images saved to this folder will hang on the line." = "이 폴더에 새로 저장되는 이미지가 빨랫줄에 걸려요.";
-"Shortcut" = "단축키";
-"Change Shortcut…" = "단축키 변경…";
-"Change Shortcut" = "단축키 변경";
-"None" = "없음";
-"Space" = "스페이스";
-"Press the new shortcut" = "새 단축키를 누르세요";
-"Escape cancels. Delete removes the shortcut." = "Esc 키를 누르면 취소되고, Delete 키를 누르면 단축키가 지워져요.";
+
+
+
+
+
+
 "Size" = "크기";
 "Small" = "작게";
 "Medium" = "중간";
@@ -73,22 +72,18 @@
 "Note text" = "Note text";
 "Saved locally" = "Saved locally";
 "Saving…" = "Saving…";
-"Region capture · Q+A" = "Region capture · Q+A";
-"Enable Q+A / Shift+Q+A shortcuts…" = "Enable Q+A / Shift+Q+A shortcuts…";
-"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again.";
+
+
+
 "Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
 "Delete note…" = "Delete note…";
 
-"Delete this note?" = "Delete this note?";
 
-"The note will move to the Trash and can be restored there." = "The note will move to the Trash and can be restored there.";
 
-"Delete" = "Delete";
 
-"Cancel" = "Cancel";
 
 "Region capture" = "Region capture";
 
@@ -105,3 +100,9 @@
 "Paste" = "Paste";
 
 "Select All" = "Select All";
+
+"Region capture · Shift+Z" = "Region capture · Shift+Z";
+
+"Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
+
+"Screenshot permissions…" = "Screenshot permissions…";

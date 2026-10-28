@@ -14,7 +14,7 @@
 "Sounds" = "Sons";
 "Open at login" = "Ouvrir à l’ouverture de session";
 "Check for Updates…" = "Rechercher les mises à jour…";
-"Quit Tendedero" = "Quitter Tendedero";
+
 "Could not change the login setting" = "Impossible de modifier l’ouverture à la connexion";
 "Move Tendedero to the Applications folder and try again." = "Placez Tendedero dans le dossier Applications, puis réessayez.";
 "Keep on line" = "Garder sur la corde";
@@ -25,13 +25,12 @@
 "Stop Watching" = "Ne plus surveiller";
 "Watch" = "Surveiller";
 "New images saved to this folder will hang on the line." = "Les nouvelles images enregistrées dans ce dossier s’accrocheront à la corde.";
-"Shortcut" = "Raccourci";
-"Change Shortcut…" = "Modifier le raccourci…";
-"Change Shortcut" = "Modifier le raccourci";
-"None" = "Aucun";
-"Space" = "Espace";
-"Press the new shortcut" = "Appuyez sur le nouveau raccourci";
-"Escape cancels. Delete removes the shortcut." = "Échap annule. Effacer supprime le raccourci.";
+
+
+
+
+
+
 "Size" = "Taille";
 "Small" = "Petite";
 "Medium" = "Moyenne";
@@ -73,22 +72,18 @@
 "Note text" = "Note text";
 "Saved locally" = "Saved locally";
 "Saving…" = "Saving…";
-"Region capture · Q+A" = "Region capture · Q+A";
-"Enable Q+A / Shift+Q+A shortcuts…" = "Enable Q+A / Shift+Q+A shortcuts…";
-"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again.";
+
+
+
 "Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
 "Delete note…" = "Delete note…";
 
-"Delete this note?" = "Delete this note?";
 
-"The note will move to the Trash and can be restored there." = "The note will move to the Trash and can be restored there.";
 
-"Delete" = "Delete";
 
-"Cancel" = "Cancel";
 
 "Region capture" = "Region capture";
 
@@ -105,3 +100,9 @@
 "Paste" = "Paste";
 
 "Select All" = "Select All";
+
+"Region capture · Shift+Z" = "Region capture · Shift+Z";
+
+"Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
+
+"Screenshot permissions…" = "Screenshot permissions…";

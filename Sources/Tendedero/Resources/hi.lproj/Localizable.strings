@@ -16,7 +16,7 @@
 "Sounds" = "आवाज़ें";
 "Open at login" = "लॉगिन पर खोलें";
 "Check for Updates…" = "अपडेट देखें…";
-"Quit Tendedero" = "Tendedero बंद करें";
+
 "Could not change the login setting" = "लॉगिन सेटिंग बदली नहीं जा सकी";
 "Move Tendedero to the Applications folder and try again." = "Tendedero को Applications फ़ोल्डर में ले जाएँ और फिर से कोशिश करें।";
 "Keep on line" = "रस्सी पर रखें";
@@ -27,13 +27,12 @@
 "Stop Watching" = "नज़र रखना बंद करें";
 "Watch" = "नज़र रखें";
 "New images saved to this folder will hang on the line." = "इस फ़ोल्डर में सेव होने वाली नई तस्वीरें रस्सी पर टँग जाएँगी।";
-"Shortcut" = "शॉर्टकट";
-"Change Shortcut…" = "शॉर्टकट बदलें…";
-"Change Shortcut" = "शॉर्टकट बदलें";
-"None" = "कोई नहीं";
-"Space" = "Space";
-"Press the new shortcut" = "नया शॉर्टकट दबाएँ";
-"Escape cancels. Delete removes the shortcut." = "Escape दबाने से रद्द होता है। Delete से शॉर्टकट हट जाता है।";
+
+
+
+
+
+
 "Size" = "आकार";
 "Small" = "छोटा";
 "Medium" = "मध्यम";
@@ -75,22 +74,18 @@
 "Note text" = "Note text";
 "Saved locally" = "Saved locally";
 "Saving…" = "Saving…";
-"Region capture · Q+A" = "Region capture · Q+A";
-"Enable Q+A / Shift+Q+A shortcuts…" = "Enable Q+A / Shift+Q+A shortcuts…";
-"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again.";
+
+
+
 "Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
 "Delete note…" = "Delete note…";
 
-"Delete this note?" = "Delete this note?";
 
-"The note will move to the Trash and can be restored there." = "The note will move to the Trash and can be restored there.";
 
-"Delete" = "Delete";
 
-"Cancel" = "Cancel";
 
 "Region capture" = "Region capture";
 
@@ -107,3 +102,9 @@
 "Paste" = "Paste";
 
 "Select All" = "Select All";
+
+"Region capture · Shift+Z" = "Region capture · Shift+Z";
+
+"Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
+
+"Screenshot permissions…" = "Screenshot permissions…";

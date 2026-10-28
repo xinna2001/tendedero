@@ -31,6 +31,7 @@ struct GrabArea: NSViewRepresentable {
         let line = line
         let isRecording = item.isRecording
         let isNote = item.isNote
+        view.hasDiscardCorner = !isNote
         view.url = item.url
         view.dragImage = item.thumb
         view.onClick = { line.copy(id) }
@@ -89,6 +90,7 @@ final class GrabView: NSView, NSDraggingSource {
     /// A photo's menu is open. It reaches past the line, so the line waits.
     static var isShowingMenu = false
 
+    var hasDiscardCorner = true
     var url: URL?
     var dragImage: NSImage?
     var onClick: () -> Void = {}
@@ -132,7 +134,7 @@ final class GrabView: NSView, NSDraggingSource {
             clickTimer?.invalidate()
             clickTimer = nil
         }
-        if isInCross(event) {
+        if hasDiscardCorner && isInCross(event) {
             downPoint = nil
             onDiscard()
             return

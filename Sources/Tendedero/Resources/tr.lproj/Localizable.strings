@@ -14,7 +14,7 @@
 "Sounds" = "Sesler";
 "Open at login" = "Başlangıçta aç";
 "Check for Updates…" = "Güncellemeleri denetle…";
-"Quit Tendedero" = "Tendedero'yu kapat";
+
 "Could not change the login setting" = "Giriş ayarı değiştirilemedi";
 "Move Tendedero to the Applications folder and try again." = "Tendedero'yu Uygulamalar klasörüne taşıyın ve tekrar deneyin.";
 "Keep on line" = "İpte tut";
@@ -25,13 +25,12 @@
 "Stop Watching" = "İzlemeyi durdur";
 "Watch" = "İzle";
 "New images saved to this folder will hang on the line." = "Bu klasöre kaydedilen yeni görseller ipe asılır.";
-"Shortcut" = "Kısayol";
-"Change Shortcut…" = "Kısayolu değiştir…";
-"Change Shortcut" = "Kısayolu değiştir";
-"None" = "Yok";
-"Space" = "Boşluk";
-"Press the new shortcut" = "Yeni kısayolu basın";
-"Escape cancels. Delete removes the shortcut." = "Escape iptal eder. Sil kısayolu kaldırır.";
+
+
+
+
+
+
 "Size" = "Boyut";
 "Small" = "Küçük";
 "Medium" = "Orta";
@@ -73,22 +72,18 @@
 "Note text" = "Note text";
 "Saved locally" = "Saved locally";
 "Saving…" = "Saving…";
-"Region capture · Q+A" = "Region capture · Q+A";
-"Enable Q+A / Shift+Q+A shortcuts…" = "Enable Q+A / Shift+Q+A shortcuts…";
-"Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again." = "Enable ClipLine in System Settings → Privacy & Security → Accessibility, then try again.";
+
+
+
 "Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
 "Delete note…" = "Delete note…";
 
-"Delete this note?" = "Delete this note?";
 
-"The note will move to the Trash and can be restored there." = "The note will move to the Trash and can be restored there.";
 
-"Delete" = "Delete";
 
-"Cancel" = "Cancel";
 
 "Region capture" = "Region capture";
 
@@ -105,3 +100,9 @@
 "Paste" = "Paste";
 
 "Select All" = "Select All";
+
+"Region capture · Shift+Z" = "Region capture · Shift+Z";
+
+"Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
+
+"Screenshot permissions…" = "Screenshot permissions…";
