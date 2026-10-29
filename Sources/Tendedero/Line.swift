@@ -46,11 +46,23 @@ final class Line: ObservableObject {
     /// uses them to only catch clicks over photos and let the rest through.
     var hitRects: [UUID: CGRect] = [:]
     static let emptyClipID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    static let newLayerClipID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
     var onNewNote: () -> Void = {}
+    var onNewLayer: () -> Void = {}
     var onEditNote: (UUID) -> Void = { _ in }
     var onDeleteNote: (UUID) -> Void = { _ in }
+    var onError: (String) -> Void = { _ in }
+    @Published private(set) var layers: [LayerRecord] = []
+    @Published private(set) var activeLayerID: UUID?
+    private var layerStore: LayerStore?
+    private(set) var storageError: String?
 
-    var maxItems = 8
+    var activeLayerName: String { layers.first { $0.id == activeLayerID }?.name ?? L("Daily") }
+    var layerPosition: String {
+        "\(activeLayerName) · \((layers.firstIndex { $0.id == activeLayerID } ?? 0) + 1)/\(max(1, layers.count))"
+    }
+
+    var maxItems = Int.max
     /// How many photos fit across the screen. With Keep on line set, the
     /// line can hold more, and the rest are reached by scrolling.
     var visibleCount = 8
@@ -88,11 +100,15 @@ final class Line: ObservableObject {
 
     @discardableResult
     func hang(_ url: URL, quietly: Bool = false, flying: Bool = false) -> UUID? {
-        guard !items.contains(where: { $0.url == url && !$0.falling }),
+        guard !items.contains(where: { $0.url == url && !$0.falling }) else { return nil }
+        guard let layerStore, layerStore.layer(containing: url.path) == nil,
               let thumb = makeThumbnail(url) else { return nil }
+        do { try layerStore.replaceActivePaths(items.filter { !$0.falling }.map(\.url.path) + [url.path]) }
+        catch { onError(error.localizedDescription); return nil }
         var item = Pegged(url: url, thumb: thumb)
         item.flying = flying
         items.append(item)
+        layers = layerStore.layers
         scroll = 0
         // A full line lets the oldest photo fall off the far end. Only one: a
         // line hung on a wider screen keeps its length here instead of losing
@@ -100,7 +116,6 @@ final class Line: ObservableObject {
         if liveCount > maxItems, let oldest = items.first(where: { !$0.falling }) {
             letGo(oldest.id)
         }
-        save()
         if !quietly { play("Tink", volume: 0.35) }
         return item.id
     }
@@ -117,13 +132,13 @@ final class Line: ObservableObject {
 
     func drop(_ id: UUID, quietly: Bool = false) {
         guard let i = items.firstIndex(where: { $0.id == id }), !items[i].falling else { return }
+        guard save(excluding: id) else { return }
         onFall?(items[i])
         items[i].falling = true
         hitRects[id] = nil
-        save()
         if !quietly { play("Pop", volume: 0.25) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-            self?.items.removeAll { $0.id == id }
+            self?.items.removeAll { $0.id == id && $0.falling }
         }
     }
 
@@ -139,9 +154,7 @@ final class Line: ObservableObject {
         return toTheLeft ? Array(live[..<i]) : Array(live[(i + 1)...])
     }
 
-    /// Takes down everything on one side of a photo. Each one goes the way
-    /// of its own corner button: to the Trash from Tendedero's folder, and
-    /// only off the line from anywhere else.
+    /// Taking cards down only removes their membership in the active layer.
     func takeDown(_ id: UUID, toTheLeft: Bool) {
         takeDown(neighbours(of: id, toTheLeft: toTheLeft))
     }
@@ -193,6 +206,7 @@ final class Line: ObservableObject {
     @discardableResult
     func trash(_ id: UUID, quietly: Bool = false) -> Bool {
         guard let item = items.first(where: { $0.id == id }) else { return false }
+        guard layerStore != nil else { return false }
         do {
             try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
             log.notice("Trashed \(item.url.lastPathComponent, privacy: .public)")
@@ -220,12 +234,9 @@ final class Line: ObservableObject {
 
     /// The corner cross and "Take down" both end up here.
     func discard(_ id: UUID, quietly: Bool = false) {
-        if isInInbox(id) { trash(id, quietly: quietly) } else { drop(id, quietly: quietly) }
+        drop(id, quietly: quietly)
     }
 
-    /// The oldest photo falling off a full line. Like the cross, a file from
-    /// Tendedero's folder goes to the Trash, or nothing would ever take it out
-    /// of that folder. If the Trash refuses it, it still leaves the line.
     /// Moves along a line that holds more than fit, from a scroll gesture.
     func scroll(by delta: CGFloat) {
         let most = CGFloat(max(0, items.count - (visibleCount - 1))) * Layout.spacing
@@ -237,13 +248,14 @@ final class Line: ObservableObject {
     /// of a full line.
     func trim() {
         while liveCount > maxItems, let oldest = items.first(where: { !$0.falling }) {
+            let before = liveCount
             letGo(oldest.id)
+            if liveCount == before { break }
         }
         scroll = 0
     }
 
     private func letGo(_ id: UUID) {
-        if isInInbox(id), trash(id, quietly: true) { return }
         drop(id, quietly: true)
     }
 
@@ -326,22 +338,77 @@ final class Line: ObservableObject {
 
     // MARK: Persistence
 
-    private func save() {
-        let paths = items.filter { !$0.falling }.map(\.url.path)
-        ClipSettings.defaults.set(paths, forKey: storeKey)
+    @discardableResult
+    private func save(excluding id: UUID? = nil) -> Bool {
+        guard let layerStore else { return false }
+        do {
+            try layerStore.replaceActivePaths(items.filter { !$0.falling && $0.id != id }.map(\.url.path))
+            layers = layerStore.layers
+            return true
+        } catch { onError(error.localizedDescription); return false }
     }
 
     /// Everything comes back as it was. This runs before the line knows its
     /// screen, so the capacity is still the default one: hanging through
     /// `hang` would let photos fall off a wide screen's line at every launch.
     private func restore() {
-        let paths = ClipSettings.defaults.stringArray(forKey: storeKey) ?? []
+        do {
+            layerStore = try LayerStore(url: ClipPaths.base.appendingPathComponent("layers.json"),
+                legacyPaths: ClipSettings.defaults.stringArray(forKey: storeKey) ?? [], firstName: L("Daily"))
+            restoreActiveLayer()
+        } catch {
+            storageError = error.localizedDescription
+            log.error("Could not read layers; the original data was preserved")
+        }
+    }
+
+    private func restoreActiveLayer() {
+        guard let layerStore else { return }
+        items = []
+        layers = layerStore.layers
+        activeLayerID = layerStore.activeID
+        scroll = 0
+        hitRects = [:]
+        copiedID = nil; draggingID = nil; pressedID = nil
+        let paths = layerStore.active.paths
         for path in paths where FileManager.default.fileExists(atPath: path) {
             let url = URL(fileURLWithPath: path)
             guard !items.contains(where: { $0.url == url }), let thumb = makeThumbnail(url) else { continue }
             items.append(Pegged(url: url, thumb: thumb))
         }
     }
+
+    @discardableResult
+    func createLayer() -> Bool {
+        guard let layerStore else { return false }
+        do {
+            _ = try layerStore.create(name: String(format: L("Layer %d"), layers.count + 1))
+            restoreActiveLayer()
+            return true
+        } catch { onError(error.localizedDescription); return false }
+    }
+
+    @discardableResult
+    func selectLayer(_ id: UUID? = nil) -> Bool {
+        guard let layerStore else { return false }
+        do {
+            if let id { try layerStore.select(id) } else { try layerStore.selectNext() }
+            restoreActiveLayer()
+            return true
+        } catch { onError(error.localizedDescription); return false }
+    }
+
+    func renameLayer(_ name: String) {
+        guard let layerStore else { return }
+        let value = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(32))
+        guard !value.isEmpty else { return }
+        do {
+            try layerStore.renameActive(value)
+            layers = layerStore.layers
+        } catch { onError(error.localizedDescription) }
+    }
+
+    func layerContaining(_ url: URL) -> UUID? { layerStore?.layer(containing: url.path)?.id }
 
     // MARK: Helpers
 

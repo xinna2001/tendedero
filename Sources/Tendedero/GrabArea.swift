@@ -31,7 +31,7 @@ struct GrabArea: NSViewRepresentable {
         let line = line
         let isRecording = item.isRecording
         let isNote = item.isNote
-        view.hasDiscardCorner = !isNote
+        view.hasDiscardCorner = true
         view.url = item.url
         view.dragImage = item.thumb
         view.onClick = { line.copy(id) }
@@ -43,7 +43,7 @@ struct GrabArea: NSViewRepresentable {
             line.prune()
         }
         view.onTrash = { line.trash(id) }
-        view.onDiscard = { if isNote { line.onDeleteNote(id) } else { line.discard(id) } }
+        view.onDiscard = { line.discard(id) }
         view.onLongPress = { line.markup(id) }
         view.onForceClick = { if isNote { line.onEditNote(id) } else { line.quickLook(id) } }
         view.onPressChange = { pressed in line.pressedID = pressed ? id : nil }
@@ -68,11 +68,9 @@ struct GrabArea: NSViewRepresentable {
             if isNote {
                 menu.addItem(ClosureMenuItem(L("Delete note…")) { line.onDeleteNote(id) })
             }
-            if inInbox {
-                menu.addItem(ClosureMenuItem(L("Discard")) { line.discard(id) })
-            } else {
-                menu.addItem(ClosureMenuItem(L("Take down")) { line.discard(id) })
-                menu.addItem(ClosureMenuItem(L("Move to Trash")) { line.trash(id) })
+            menu.addItem(ClosureMenuItem(L("Take down")) { line.discard(id) })
+            if !isNote {
+                menu.addItem(ClosureMenuItem(inInbox ? L("Move to Trash") : L("Move original file to Trash")) { line.trash(id) })
             }
             let left = ClosureMenuItem(L("Take down everything to the left")) { line.takeDown(id, toTheLeft: true) }
             left.isEnabled = !line.neighbours(of: id, toTheLeft: true).isEmpty

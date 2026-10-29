@@ -4,7 +4,7 @@
 
 /* AppDelegate */
 "Let Tendedero handle your screenshots?" = "Ekran şəkillərinizi Tendedero idarə etsin?";
-"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Ekran şəkilləri üzən miniatür olmadan, çəkdiyiniz an ipdən asılacaq və İş masanızda yığılıb qalmayacaq. Saxlamaq istədiyinizi qovluğa sürükləyin, istəmədiyinizi çarpazla atın. Bunu menyu panelindən söndürə bilərsiniz, Tendedero bağlananda isə ayarlarınız əvvəlki halına qayıdır.";
+"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Screenshots hang instantly and skip the Desktop. Taking a card down keeps its file; use Move to Trash to delete it. Your screenshot settings return when ClipLine quits.";
 "Turn on" = "Aktiv et";
 "Not now" = "İndi yox";
 "Hide line" = "İpi gizlət";
@@ -20,7 +20,6 @@
 "Could not change the login setting" = "Giriş ayarını dəyişmək alınmadı";
 "Move Tendedero to the Applications folder and try again." = "Tendedero-nu Applications (Proqramlar) qovluğuna köçürün və yenidən cəhd edin.";
 "Keep on line" = "İpdə saxla";
-"As many as fit" = "Sığdığı qədər";
 "%d photos" = "%d şəkil";
 "Also watch folders" = "Qovluqları da izlə";
 "Add Folder…" = "Qovluq əlavə et…";
@@ -54,7 +53,6 @@
 "Markup" = "İşarələmə";
 "Show in Finder" = "Finder-də göstər";
 "Save to Desktop" = "İş masasında saxla";
-"Discard" = "At";
 "Take down" = "İpdən götür";
 "Move to Trash" = "Zibil qutusuna at";
 "Take down everything to the left" = "Soldakıların hamısını götür";
@@ -77,7 +75,6 @@
 
 
 
-"Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
@@ -87,7 +84,6 @@
 
 
 
-"Region capture" = "Region capture";
 
 "Quit ClipLine" = "Quit ClipLine";
 
@@ -103,8 +99,17 @@
 
 "Select All" = "Select All";
 
-"Region capture · Shift+Z" = "Region capture · Shift+Z";
 
 "Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
 
-"Screenshot permissions…" = "Screenshot permissions…";
+"All cards" = "All cards";
+"Cancel" = "Cancel";
+"Create an empty layer; Shift+Down switches layers" = "Create an empty layer; Shift+Down switches layers";
+"Daily" = "Daily";
+"Layer %d" = "Layer %d";
+"Move original file to Trash" = "Move original file to Trash";
+"New layer" = "New layer";
+"Next layer · Shift+Down" = "Next layer · Shift+Down";
+"Rename layer" = "Rename layer";
+"Save" = "Save";
+"Screenshot: Command+Shift+4 (macOS)" = "Screenshot: Command+Shift+4 (macOS)";

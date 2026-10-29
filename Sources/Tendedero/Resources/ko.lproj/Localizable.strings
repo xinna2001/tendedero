@@ -2,7 +2,7 @@
 
 /* AppDelegate */
 "Let Tendedero handle your screenshots?" = "Tendedero가 스크린샷을 관리하도록 할까요?";
-"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "스크린샷을 찍는 즉시 플로팅 썸네일 없이 빨랫줄에 걸리고, 데스크탑에 쌓이지 않아요. 보관하려면 폴더로 드래그하고, 버리려면 X 버튼을 클릭하세요. 메뉴 막대에서 언제든 끌 수 있고, Tendedero를 종료하면 원래 설정으로 돌아가요.";
+"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Screenshots hang instantly and skip the Desktop. Taking a card down keeps its file; use Move to Trash to delete it. Your screenshot settings return when ClipLine quits.";
 "Turn on" = "켜기";
 "Not now" = "나중에";
 "Hide line" = "빨랫줄 가리기";
@@ -18,7 +18,6 @@
 "Could not change the login setting" = "로그인 설정을 변경할 수 없음";
 "Move Tendedero to the Applications folder and try again." = "Tendedero를 응용 프로그램 폴더로 옮긴 다음 다시 시도하세요.";
 "Keep on line" = "빨랫줄에 남길 개수";
-"As many as fit" = "들어가는 만큼";
 "%d photos" = "사진 %d장";
 "Also watch folders" = "다른 폴더도 지켜보기";
 "Add Folder…" = "폴더 추가…";
@@ -52,7 +51,6 @@
 "Markup" = "마크업";
 "Show in Finder" = "Finder에서 보기";
 "Save to Desktop" = "데스크탑에 저장";
-"Discard" = "버리기";
 "Take down" = "걷어내기";
 "Move to Trash" = "휴지통으로 이동";
 "Take down everything to the left" = "왼쪽 모두 걷어내기";
@@ -75,7 +73,6 @@
 
 
 
-"Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
@@ -85,7 +82,6 @@
 
 
 
-"Region capture" = "Region capture";
 
 "Quit ClipLine" = "Quit ClipLine";
 
@@ -101,8 +97,17 @@
 
 "Select All" = "Select All";
 
-"Region capture · Shift+Z" = "Region capture · Shift+Z";
 
 "Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
 
-"Screenshot permissions…" = "Screenshot permissions…";
+"All cards" = "All cards";
+"Cancel" = "Cancel";
+"Create an empty layer; Shift+Down switches layers" = "Create an empty layer; Shift+Down switches layers";
+"Daily" = "Daily";
+"Layer %d" = "Layer %d";
+"Move original file to Trash" = "Move original file to Trash";
+"New layer" = "New layer";
+"Next layer · Shift+Down" = "Next layer · Shift+Down";
+"Rename layer" = "Rename layer";
+"Save" = "Save";
+"Screenshot: Command+Shift+4 (macOS)" = "Screenshot: Command+Shift+4 (macOS)";

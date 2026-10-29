@@ -5,7 +5,7 @@ description: 把飞书消息挂成 Mac 图绳的可编辑文字便签，打开�
 
 # 图绳与 Botmux 联动
 
-用 `scripts/clipline.py` 与独立 Mac 应用 ClipLine 交互。应用存储在 `~/Applications/ClipLine.app`；数据在 `~/Library/Application Support/ClipLine`。仓库为 https://github.com/xinna2001/tendedero ，版本 1.7.2 起支持联动。
+用 `scripts/clipline.py` 与独立 Mac 应用 ClipLine 交互。应用存储在 `~/Applications/ClipLine.app`；数据在 `~/Library/Application Support/ClipLine`。仓库为 https://github.com/xinna2001/tendedero ，版本 1.8.0 起支持联动。
 
 ## 挂文字
 
@@ -44,9 +44,11 @@ python3 scripts/clipline.py consume --session SESSION_ID --sender OPEN_ID --requ
 
 ## 安装与权限
 
-第一次缺少应用时，脚本从自有 GitHub 正式 Release 获取 `ClipLine-*-macos-universal.zip`，验证 SHA-256 和应用身份后安装。没有对应 Release 时从自有 `v1.7.2` 标签构建。不要替换上游 Tendedero，也不要清理便签目录。已有旧包需要更新时先正常退出并保留旧包。
+第一次缺少应用时，脚本从自有 GitHub 正式 Release 获取 `ClipLine-*-macos-universal.zip`，验证 SHA-256 和应用身份后安装。没有对应 Release 时从自有 `v1.8.0` 标签构建。不要替换上游 Tendedero，也不要清理便签目录。已有旧包需要更新时先正常退出并保留旧包。
 
-Shift+Z 框选截图通过 macOS 注册，Caps Lock+Shift 展示/收起只读取修饰键状态，两者不需要辅助功能权限；截图内容仍需要屏幕录制权限。读取 `status` 的实际结果，权限缺失时说明系统设置中的具体开关，不声称快捷键已生效。不要修改 macOS TCC 数据库或代替用户授予系统权限。
+截图沿用macOS的Command+Shift+4等系统快捷键，应用不注册Shift+Z，也不提供自定义截图。Caps Lock+Shift展示/收起，Shift+↓循环切层，不需要辅助功能权限；编辑便签时暂停Shift+↓切层以保留文字选中。
+
+新增文字默认挂到当前图层；更新已经挂着的便签时切回它所在的图层。所有图层和当前层保存在layers.json，旧版已有挂卡自动进入第一层；不要手动改写或删除这份文件。只保留顶部回形针，菜单中“退出图绳”可正常保存后退出。叉号/取下只移除展示，垃圾桶会把便签文件移到系统废纸篓。
 
 ## 隔离验证
 

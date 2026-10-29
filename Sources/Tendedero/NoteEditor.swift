@@ -150,7 +150,7 @@ final class NoteEditor: NSObject, NSTextViewDelegate, NSWindowDelegate {
         guard let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command,
             timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
             context: nil, characters: "v", charactersIgnoringModifiers: "v", isARepeat: false, keyCode: 9) else { return false }
-        let handled = NSApp.mainMenu?.performKeyEquivalent(with: event) == true
+        let handled = window.performKeyEquivalent(with: event)
         guard handled && textView.string == expected && save() else { return false }
         if let content = window.contentView, let bitmap = content.bitmapImageRepForCachingDisplay(in: content.bounds) {
             content.cacheDisplay(in: content.bounds, to: bitmap)
@@ -165,4 +165,10 @@ final class NoteEditor: NSObject, NSTextViewDelegate, NSWindowDelegate {
 private final class NoteWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command), NSApp.mainMenu?.performKeyEquivalent(with: event) == true {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 }

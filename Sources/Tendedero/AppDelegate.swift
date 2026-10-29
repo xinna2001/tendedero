@@ -26,11 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var mouseTimer: Timer?
     private let noteEditor = NoteEditor()
     private let chordMonitor = ChordMonitor()
-    private let regionCapture = RegionCapture()
     private let bridge = AppBridge()
-    private var captureShortcutCount = 0
+    private var layerShortcutCount = 0
     private var toggleShortcutCount = 0
     private static let systemChordsEnabled = ProcessInfo.processInfo.environment["CLIPLINE_DATA_ROOT"] == nil
+        || ProcessInfo.processInfo.environment["CLIPLINE_TEST_SHORTCUTS"] == "1"
 
     /// Whether the panel is ordered in. It can be in and still tucked away
     /// above the top edge, like an auto-hiding Dock.
@@ -82,22 +82,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateCapacity()
 
         line.onNewNote = { [weak self] in self?.newNote() }
+        line.onNewLayer = { [weak self] in self?.newLayer() }
+        line.onError = { [weak self] message in self?.showError(message) }
         line.onEditNote = { [weak self] id in self?.editNote(id) }
         line.onDeleteNote = { [weak self] id in self?.deleteNote(id) }
         noteEditor.onSaved = { [weak self] url in self?.line.reloadThumbnail(for: url) }
-        noteEditor.onClosed = { [weak self] in self?.awaySince = nil }
+        noteEditor.onClosed = { [weak self] in
+            self?.awaySince = nil
+            if Self.systemChordsEnabled { self?.chordMonitor.updateLayerRegistration() }
+        }
+        chordMonitor.isEditingText = { [weak self] in self?.noteEditor.isEditing == true || NSApp.modalWindow != nil }
         chordMonitor.onAction = { [weak self] action in
             if action == .toggle {
                 self?.toggleShortcutCount += 1
                 self?.toggle()
             } else {
-                self?.captureShortcutCount += 1
-                self?.captureRegion()
+                self?.layerShortcutCount += 1
+                self?.nextLayer()
             }
         }
         if Self.systemChordsEnabled { _ = chordMonitor.start() }
-        regionCapture.onCaptured = { [weak self] url in self?.hangCapture(url) }
-        regionCapture.onError = { [weak self] message in self?.showError(message) }
         bridge.onCommand = { [weak self] request in
             guard let self else { throw BridgeError.invalidRequest }
             return try self.bridgeCommand(request)
@@ -107,10 +111,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
              "notes": (try? ClipPaths.notes.all().count) ?? 0,
              "globalChordsActive": self?.chordMonitor.isRunning ?? false,
              "accessibilityTrusted": AXIsProcessTrusted(),
-             "screenCaptureAllowed": CGPreflightScreenCaptureAccess(),
-             "captureShortcut": "Shift+Z", "toggleShortcut": "Caps Lock+Shift",
-             "captureShortcutRegistered": self?.chordMonitor.captureRegistered ?? false,
-             "captureShortcutCount": self?.captureShortcutCount ?? 0,
+             "captureShortcut": "macOS", "toggleShortcut": "Caps Lock+Shift",
+             "layerShortcut": "Shift+Down",
+             "layerShortcutRegistered": self?.chordMonitor.layerRegistered ?? false,
+             "layerShortcutCount": self?.layerShortcutCount ?? 0,
+             "layerCount": self?.line.layers.count ?? 0,
+             "activeLayer": self?.line.layerPosition ?? "",
+             "activeLayerID": self?.line.activeLayerID?.uuidString ?? "",
+             "dockVisible": NSApp.activationPolicy() == .regular,
+             "storageHealthy": self?.line.storageError == nil,
              "toggleShortcutCount": self?.toggleShortcutCount ?? 0]
         }
         do { try bridge.start() } catch { showError(error.localizedDescription) }
@@ -123,7 +132,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         setUpStatusItem()
         ApplicationMenu.install(show: { [weak self] in self?.showLine() },
-                                capture: { [weak self] in self?.captureRegion() },
                                 note: { [weak self] in self?.newNote() })
         watchMenuBarClicks()
 
@@ -170,9 +178,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
-        // Q+A saves its capture directly; system screenshot settings stay
-        // unchanged unless the user enables inbox mode from the menu.
+        // macOS owns screenshot capture. Inbox mode remains an explicit choice.
         Inbox.wasOffered = true
+        if let error = line.storageError { showError(error) }
 
         if !ClipSettings.defaults.bool(forKey: "welcomed") {
             ClipSettings.defaults.set(true, forKey: "welcomed")
@@ -233,14 +241,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let anchor = NSPoint(x: panel.frame.minX + (rect?.midX ?? panel.frame.width / 2),
                                  y: panel.frame.maxY - (rect?.minY ?? 30))
             noteEditor.open(note, store: ClipPaths.notes, anchor: anchor)
+            if Self.systemChordsEnabled { chordMonitor.updateLayerRegistration() }
         } catch { showError(error.localizedDescription) }
     }
 
-    private func captureRegion() {
-        guard !regionCapture.isCapturing, noteEditor.close() else { return }
-        setRevealed(false)
-        panel.orderOut(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in self?.regionCapture.capture() }
+    private func newLayer() {
+        guard noteEditor.close(), !GrabView.isDragging, line.createLayer() else { return }
+        showLine()
+    }
+
+    private func nextLayer(_ id: UUID? = nil) {
+        guard noteEditor.close(), !GrabView.isDragging, line.selectLayer(id) else { return }
+        showLine()
+    }
+
+    private func renameLayer() {
+        guard noteEditor.close() else { return }
+        let alert = NSAlert()
+        alert.messageText = L("Rename layer")
+        let field = NSTextField(string: line.activeLayerName)
+        field.frame = NSRect(x: 0, y: 0, width: 240, height: 24)
+        alert.accessoryView = field
+        alert.addButton(withTitle: L("Save"))
+        alert.addButton(withTitle: L("Cancel"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { line.renameLayer(field.stringValue) }
+        updateStatusIcon()
     }
 
     private func deleteNote(_ id: UUID) {
@@ -265,7 +291,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if let note {
             let url = ClipPaths.notes.url(for: note.id)
-            _ = line.hang(url)
+            if let layerID = line.layerContaining(url), layerID != line.activeLayerID {
+                guard noteEditor.close(), line.selectLayer(layerID) else { throw NoteStoreError.conflict }
+            }
+            if !line.items.contains(where: { $0.url == url && !$0.falling }), line.hang(url) == nil {
+                throw LayerStoreError.invalidDocument
+            }
             line.reloadThumbnail(for: url)
             showLine()
         }
@@ -308,7 +339,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let afterClipX = self.line.hitRects[Line.emptyClipID]?.midX ?? 0
                 let lastCardX = self.line.items.last.flatMap { self.line.hitRects[$0.id]?.midX } ?? 0
                 let dynamicClip = afterClipX > beforeClipX && afterClipX > lastCardX
-                let sample = "图绳便签\n\n点空夹子创建纸张\nCommand+V 粘贴，自动保存\n右上角垃圾桶可直接删除\n\nShift+Z：框选截图\nCaps Lock+Shift：展示 / 收起"
+                let sample = "图绳便签\n\n点空夹子创建纸张\nCommand+V 粘贴，自动保存\n右上角垃圾桶移到废纸篓\n\nCommand+Shift+4：系统截图\nShift+↓：切换图层\nCaps Lock+Shift：展示 / 收起"
                 let editorWorked = self.noteEditor.insertForUIChecks("先手动输入的一段文字")
                 guard let note = try? ClipPaths.notes.all().last else {
                     try? Data("{\"success\":false,\"emptyClipClicked\":\(clicked)}".utf8)
@@ -359,17 +390,120 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                         clickedTrash = !FileManager.default.fileExists(atPath: ClipPaths.notes.url(for: note.id).path)
                     }
-                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip && pasteWorked && clickedTrash,
+                    let report: [String: Any] = ["success": clicked && editorWorked && copied && persisted && dynamicClip && pasteWorked && clickedTrash && NSApp.activationPolicy() == .accessory,
                         "emptyClipClicked": clicked, "editorWorked": editorWorked,
                         "dynamicEmptyClip": dynamicClip,
                         "commandVPaste": pasteWorked, "dockVisible": NSApp.activationPolicy() == .regular,
                         "trashButtonDeletes": clickedTrash,
                         "clipboardTextExact": copied, "persistedTextExact": persisted, "noteID": note.id.uuidString]
-                    try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted])
-                        .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
-                    NSApp.terminate(nil)
+                    self.runLayerUIChecks(report)
                 }
             }
+        }
+    }
+
+    private func clickClipForUIChecks(_ id: UUID) {
+        guard let rect = line.hitRects[id] else { return }
+        let point = NSPoint(x: rect.midX, y: panel.frame.height - rect.midY)
+        panel.ignoresMouseEvents = false
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber,
+                context: nil, eventNumber: 3, clickCount: 1, pressure: 1) { panel.sendEvent(event) }
+        }
+    }
+
+    private func runLayerUIChecks(_ initialReport: [String: Any]) {
+        Task { @MainActor in
+            var report = initialReport
+            func settle() async { try? await Task.sleep(nanoseconds: 350_000_000) }
+            func record(_ key: String, _ passed: Bool) {
+                report[key] = passed
+                if !passed { report["success"] = false }
+            }
+            let first = line.activeLayerID!
+            let firstPaths = line.items.filter { !$0.falling }.map(\.url.path)
+            await settle()
+            clickClipForUIChecks(Line.newLayerClipID)
+            await settle()
+            record("newLayerClipCreatesEmptyLayer", line.layers.count == 2 && line.activeLayerID != first && line.liveCount == 0)
+            let second = line.activeLayerID!
+            newNote()
+            await settle()
+            record("pasteShortcutPreservedWithoutDock", noteEditor.insertForUIChecks("备用层的内容") && NSApp.activationPolicy() == .accessory)
+            record("layerShortcutSuspendedWhileEditing", !chordMonitor.layerRegistered)
+            _ = noteEditor.close()
+            await settle()
+            record("layerShortcutRegistered", chordMonitor.layerRegistered)
+            HotKey.sendPressedForUIChecks()
+            await settle()
+            record("registeredShortcutReturnsToFirstLayer", line.activeLayerID == first && line.items.map(\.url.path) == firstPaths)
+            HotKey.sendPressedForUIChecks()
+            await settle()
+            record("twoLayerCycleReturnsToSecond", line.activeLayerID == second && line.liveCount == 1)
+            clickClipForUIChecks(Line.newLayerClipID)
+            await settle()
+            let third = line.activeLayerID!
+            line.renameLayer("临时")
+            for expected in [first, second, third] {
+                HotKey.sendPressedForUIChecks()
+                await settle()
+                record("threeLayerCycle_\(expected.uuidString)", line.activeLayerID == expected)
+            }
+            let restarted = Line()
+            record("restartRestoresAllLayersAndActiveLayer", restarted.layers == line.layers && restarted.activeLayerID == third)
+
+            // Exercise the real folder watcher with an isolated image file.
+            let directory = ClipPaths.base.appendingPathComponent("Screenshots")
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let url = directory.appendingPathComponent("layer-watcher-check.png")
+            let image = NSImage(size: NSSize(width: 16, height: 16))
+            image.lockFocus(); NSColor.systemBlue.setFill(); NSRect(x: 0, y: 0, width: 16, height: 16).fill(); image.unlockFocus()
+            var watched = false
+            let probe = ScreenshotWatcher(folder: directory, anyImage: true, onNew: { [weak self] file in
+                watched = true; self?.hangCapture(file)
+            }, onChange: {})
+            probe.start()
+            await settle()
+            let png = image.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
+            try? png?.write(to: url)
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            record("newScreenshotArrivesInCurrentLayer", watched && line.activeLayerID == third && line.items.contains { $0.url == url })
+            probe.stop()
+            if let item = line.items.first(where: { $0.url == url }) {
+                line.discard(item.id)
+                await settle()
+                record("takeDownPreservesOwnedSourceFile", FileManager.default.fileExists(atPath: url.path) && !Line().items.contains { $0.url == url })
+                if let id = line.hang(url) {
+                    let trashed = line.trash(id)
+                    record("explicitTrashMovesOwnedFile", trashed && !FileManager.default.fileExists(atPath: url.path))
+                } else { record("explicitTrashMovesOwnedFile", false) }
+            } else { record("takeDownPreservesOwnedSourceFile", false) }
+            let external = ClipPaths.base.appendingPathComponent("external-check.png")
+            try? png?.write(to: external)
+            if let id = line.hang(external) {
+                line.discard(id)
+                await settle()
+                record("takeDownPreservesExternalSourceFile", FileManager.default.fileExists(atPath: external.path))
+            } else { record("takeDownPreservesExternalSourceFile", false) }
+            let menu = NSMenu(); menuNeedsUpdate(menu)
+            let titles = menu.items.map(\.title)
+            record("noCustomCaptureOrPermissionMenu", !titles.contains { $0.contains("Shift+Z") || $0.contains("权限") || $0.lowercased().contains("permissions") })
+            nextLayer(first)
+            await settle()
+            if let view = panel.contentView {
+                let region = line.hitRects.values.reduce(CGRect.null) { $0.union($1) }
+                    .insetBy(dx: -30, dy: -30).intersection(view.bounds)
+                if !region.isNull, let bitmap = view.bitmapImageRepForCachingDisplay(in: region) {
+                    view.cacheDisplay(in: region, to: bitmap)
+                    try? bitmap.representation(using: .png, properties: [:])?
+                        .write(to: ClipPaths.base.appendingPathComponent("layers-preview.png"))
+                }
+            }
+            report["layerShortcutCount"] = layerShortcutCount
+            try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+                .write(to: ClipPaths.base.appendingPathComponent("ui-checks.json"))
+            NSApp.terminate(nil)
         }
     }
     #endif
@@ -516,9 +650,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let screen = from.flatMap { from in
             NSScreen.screens.first { NSMouseInRect(CGPoint(x: from.midX, y: from.midY), $0.frame, false) }
         }
-        // Every capture brings the line down before it hangs, on the screen it
-        // was taken on. On a full line the oldest photo then falls in view as
-        // the new one flies in.
+        // Every capture hangs in the active layer, on the screen it came from.
         comeDown(on: screen)
         guard let id = line.hang(url, flying: from != nil) else {
             // Nothing hung after all, so an empty line goes away again.
@@ -810,7 +942,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var overPhoto = line.hitRects.values.contains { $0.insetBy(dx: -4, dy: -4).contains(flipped) }
         // A line longer than the screen also takes the band the photos hang
         // in, gaps included, so a swipe anywhere along it moves it.
-        if !overPhoto, line.items.count > line.visibleCount, Line.keepOnLine != nil {
+        if !overPhoto, line.items.count + 1 > line.visibleCount {
             let band = line.hitRects.values.reduce(CGRect.null) { $0.union($1) }
             overPhoto = !band.isNull && flipped.y >= band.minY - 4 && flipped.y <= band.maxY + 4
         }
@@ -838,10 +970,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updateCapacity() {
-        let usable = panel.frame.width - 200
+        let usable = panel.frame.width - 360
         let fits = max(3, min(12, Int(usable / Layout.spacing)))
         line.visibleCount = fits
-        line.maxItems = max(fits - 1, Line.keepOnLine ?? (fits - 1))
+        line.maxItems = Line.keepOnLine ?? Int.max
     }
 
     // MARK: Menu bar
@@ -872,14 +1004,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         image?.isTemplate = true
         statusItem.button?.image = image
         statusItem.button?.appearsDisabled = false
-        statusItem.button?.toolTip = "\(description)\n\(state)"
+        statusItem.button?.toolTip = "\(description)\n\(line.layerPosition)\n\(state)"
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
         menu.addItem(ClosureMenuItem(L("New note")) { [weak self] in self?.newNote() })
-        menu.addItem(ClosureMenuItem(L("Region capture · Shift+Z")) { [weak self] in self?.captureRegion() })
+        menu.addItem(ClosureMenuItem(L("New layer")) { [weak self] in self?.newLayer() })
+        menu.addItem(ClosureMenuItem(L("Next layer · Shift+Down")) { [weak self] in self?.nextLayer() })
+        let layersItem = NSMenuItem(title: line.layerPosition, action: nil, keyEquivalent: "")
+        let layerMenu = NSMenu()
+        for layer in line.layers {
+            let item = ClosureMenuItem(layer.name) { [weak self] in self?.nextLayer(layer.id) }
+            item.state = layer.id == line.activeLayerID ? .on : .off
+            layerMenu.addItem(item)
+        }
+        layerMenu.addItem(.separator())
+        layerMenu.addItem(ClosureMenuItem(L("Rename layer")) { [weak self] in self?.renameLayer() })
+        layersItem.submenu = layerMenu
+        menu.addItem(layersItem)
+        let captureHint = NSMenuItem(title: L("Screenshot: Command+Shift+4 (macOS)"), action: nil, keyEquivalent: "")
+        captureHint.isEnabled = false
+        menu.addItem(captureHint)
 
         let toggleItem = ClosureMenuItem(isRevealed ? L("Hide line") : L("Show line")) { [weak self] in
             self?.toggle()
@@ -887,6 +1034,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(toggleItem)
 
         let clearItem = ClosureMenuItem(L("Take everything down")) { [weak self] in
+            guard self?.noteEditor.close() == true else { return }
             self?.line.clear()
         }
         clearItem.isEnabled = line.liveCount > 0
@@ -959,7 +1107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let keepItem = NSMenuItem(title: L("Keep on line"), action: nil, keyEquivalent: "")
         let keeps = NSMenu()
-        let fit = ClosureMenuItem(L("As many as fit")) { [weak self] in self?.setKeep(nil) }
+        let fit = ClosureMenuItem(L("All cards")) { [weak self] in self?.setKeep(nil) }
         fit.state = Line.keepOnLine == nil ? .on : .off
         keeps.addItem(fit)
         for n in Line.keepChoices {
@@ -983,12 +1131,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let shortcutInfo = NSMenuItem(title: L("Show / hide · Caps Lock+Shift"), action: nil, keyEquivalent: "")
         shortcutInfo.isEnabled = false
         menu.addItem(shortcutInfo)
-        menu.addItem(ClosureMenuItem(L("Screenshot permissions…")) {
-            _ = CGRequestScreenCaptureAccess()
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                NSWorkspace.shared.open(url)
-            }
-        })
 
         menu.addItem(ClosureMenuItem(L("Open screenshots folder")) { [weak self] in
             guard let self else { return }

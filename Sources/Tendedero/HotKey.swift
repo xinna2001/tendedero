@@ -30,6 +30,21 @@ final class HotKey {
     deinit {
         if let ref { UnregisterEventHotKey(ref) }
     }
+
+    #if DEBUG
+    /// Sends a Carbon hot-key notification through the installed handler.
+    /// The UI checks also assert that the actual shortcut registration exists.
+    static func sendPressedForUIChecks() {
+        var event: EventRef?
+        guard CreateEvent(nil, OSType(kEventClassKeyboard), UInt32(kEventHotKeyPressed),
+                          GetCurrentEventTime(), EventAttributes(0), &event) == noErr, let event else { return }
+        var id = EventHotKeyID(signature: OSType(0x5445_4E44), id: 1)
+        SetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                          MemoryLayout<EventHotKeyID>.size, &id)
+        SendEventToEventTarget(event, GetApplicationEventTarget())
+        ReleaseEvent(event)
+    }
+    #endif
 }
 
 struct Shortcut {

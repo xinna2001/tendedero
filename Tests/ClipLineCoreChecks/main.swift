@@ -53,30 +53,69 @@ final class CoreChecks {
         checkEqual(try store.read(note.id).text, text)
     }
 
-    func testQACaptureAndShiftQAToggleAreMutuallyExclusiveAndSingleShot() {
-        var state = ChordState()
-        checkNil(state.press(12, at: 0, shift: false))
-        checkEqual(state.press(0, at: 0.1, shift: false), .capture)
-        checkNil(state.press(0, at: 0.15, shift: false, repeating: true))
-        state.release(0)
-        checkNil(state.press(0, at: 0.16, shift: true))
-        state.release(12); state.release(0)
-        checkNil(state.press(0, at: 1, shift: true))
-        checkEqual(state.press(12, at: 1.1, shift: true), .toggle)
+    func testLegacyLayerMigrationAndRestartKeepOrderAndSources() throws {
+        let notes = try store()
+        let note = try notes.create(text: "日常内容\n第二行")
+        let other = notes.root.appendingPathComponent("external.png")
+        try Data([1, 2, 3]).write(to: other)
+        let original = try Data(contentsOf: notes.url(for: note.id))
+        let url = notes.root.appendingPathComponent("layers.json")
+        let layers = try LayerStore(url: url, legacyPaths: [other.path, notes.url(for: note.id).path, other.path])
+        let firstID = layers.activeID
+        checkEqual(layers.active.paths, [other.path, notes.url(for: note.id).path])
+        let second = try layers.create(name: "备用")
+        checkEqual(layers.activeID, second.id)
+        checkEqual(layers.active.paths, [])
+        try layers.replaceActivePaths(["/another/card"])
+        try layers.selectNext()
+        checkEqual(layers.activeID, firstID)
+        try layers.replaceActivePaths([])
+        let restart = try LayerStore(url: url, legacyPaths: ["must not migrate twice"])
+        checkEqual(restart.activeID, firstID)
+        checkEqual(restart.layers[0].paths, [])
+        checkEqual(restart.layers[1].paths, ["/another/card"])
+        checkEqual(try Data(contentsOf: notes.url(for: note.id)), original)
+        checkEqual(try Data(contentsOf: other), Data([1, 2, 3]))
     }
 
-    func testOrdinaryTypingAndOtherModifierShortcutsDoNotBecomeChords() {
-        var state = ChordState()
-        checkNil(state.press(12, at: 0, shift: false))
-        state.release(12)
-        checkNil(state.press(0, at: 0.1, shift: false))
-        state.reset()
-        checkNil(state.press(12, at: 1, shift: false))
-        checkNil(state.press(0, at: 1.5, shift: false))
-        state.reset()
-        checkNil(state.press(12, at: 2, shift: false, permitted: false))
-        checkNil(state.press(0, at: 2.1, shift: false, permitted: false))
+    func testManyLayersCycleAndRenameWithoutLosingCards() throws {
+        let notes = try store()
+        let layers = try LayerStore(url: notes.root.appendingPathComponent("layers.json"))
+        for number in 2...20 {
+            _ = try layers.create(name: "图层 \(number)")
+            try layers.replaceActivePaths((0..<30).map { "/layer/\(number)/card/\($0)" })
+        }
+        try layers.renameActive("临时参考")
+        for layer in layers.layers {
+            try layers.selectNext()
+            checkEqual(layers.activeID, layer.id)
+        }
+        let restart = try LayerStore(url: layers.url)
+        checkEqual(restart.layers, layers.layers)
+        checkEqual(restart.activeID, layers.activeID)
+        checkEqual(restart.layers.last?.name, "临时参考")
+        checkEqual(restart.layers.last?.paths.count, 30)
     }
+
+    func testInvalidAndFailedLayerWritesNeverReplaceExistingState() throws {
+        let notes = try store()
+        let url = notes.root.appendingPathComponent("layers.json")
+        let layers = try LayerStore(url: url)
+        let before = layers.activeID
+        checkThrows(try layers.select(UUID()))
+        checkEqual(layers.activeID, before)
+        let damaged = Data("invalid existing document".utf8)
+        try damaged.write(to: url)
+        checkThrows(try LayerStore(url: url, legacyPaths: ["old card"]))
+        checkEqual(try Data(contentsOf: url), damaged)
+        // Replace this isolated parent with a file to force a real I/O failure.
+        try FileManager.default.removeItem(at: notes.root)
+        try Data().write(to: notes.root)
+        checkThrows(try layers.create(name: "cannot save"))
+        checkEqual(layers.activeID, before)
+        checkEqual(layers.layers.count, 1)
+    }
+
 }
 
 extension CoreChecks {
@@ -92,10 +131,12 @@ extension CoreChecks {
         print("PASS testBridgeValidationRequiresRevisionAndKeepsLiteralText")
         try testEscapedCharactersAtLargeSizesStillRoundTrip()
         print("PASS testEscapedCharactersAtLargeSizesStillRoundTrip")
-        testQACaptureAndShiftQAToggleAreMutuallyExclusiveAndSingleShot()
-        print("PASS testQACaptureAndShiftQAToggleAreMutuallyExclusiveAndSingleShot")
-        testOrdinaryTypingAndOtherModifierShortcutsDoNotBecomeChords()
-        print("PASS testOrdinaryTypingAndOtherModifierShortcutsDoNotBecomeChords")
+        try testLegacyLayerMigrationAndRestartKeepOrderAndSources()
+        print("PASS legacy layer migration, restart and unchanged source files")
+        try testManyLayersCycleAndRenameWithoutLosingCards()
+        print("PASS twenty layers cycle, rename and preserve thirty cards each")
+        try testInvalidAndFailedLayerWritesNeverReplaceExistingState()
+        print("PASS corrupt data and failed writes preserve existing state")
     }
 }
 

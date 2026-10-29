@@ -85,8 +85,7 @@ struct PeggedView: View {
             .animation(pressed ? .easeInOut(duration: 0.45) : .spring(response: 0.3, dampingFraction: 0.6), value: pressed)
             .opacity(dragging ? 0.45 : 1)
             .overlay(alignment: .topLeading) {
-                if !item.isNote {
-                    Image(systemName: line.isInInbox(item.id) ? "xmark" : "eye.slash")
+                    Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.primary)
                         .frame(width: 20, height: 20)
@@ -95,7 +94,6 @@ struct PeggedView: View {
                         .opacity(hovering && !dragging ? 1 : 0)
                         .scaleEffect(hovering ? 1 : 0.6)
                         .allowsHitTesting(false)
-                }
             }
             .overlay(GrabArea(item: item, line: line))
             .overlay(alignment: .topTrailing) {

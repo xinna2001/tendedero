@@ -2,40 +2,49 @@ import AppKit
 import Carbon
 import ClipLineCore
 
-/// Shift+Z registers with macOS; Caps Lock+Shift reads only modifier flags.
-/// The monitor never reads or delays clipboard contents or typed characters.
+enum LineShortcutAction { case toggle, nextLayer }
+
+/// Only the layer shortcut is registered. Editing a note temporarily releases
+/// Shift+Down so the system text view can use it for selection.
 @MainActor
 final class ChordMonitor {
-    private var captureKey: HotKey?
+    private var layerKey: HotKey?
     private var timer: Timer?
     private var modifiers = ModifierShortcutState()
-    var onAction: (ChordAction) -> Void = { _ in }
-    var isRunning: Bool { captureKey != nil && timer != nil }
-    var captureRegistered: Bool { captureKey != nil }
+    var onAction: (LineShortcutAction) -> Void = { _ in }
+    var isEditingText: () -> Bool = { false }
+    var isRunning: Bool { timer != nil }
+    var layerRegistered: Bool { layerKey != nil }
 
-    func start(prompt: Bool = false) -> Bool {
-        if isRunning { return true }
-        if captureKey == nil {
-            captureKey = HotKey(Shortcut(keyCode: kVK_ANSI_Z, modifiers: .shift, key: "z")) { [weak self] in
-                self?.onAction(.capture)
-            }
-        }
-        if timer == nil {
-            let flags = CGEventSource.flagsState(.combinedSessionState)
-            modifiers = ModifierShortcutState(shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift))
-            let timer = Timer(timeInterval: 0.025, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    let flags = CGEventSource.flagsState(.combinedSessionState)
-                    if self.modifiers.update(shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift)) {
-                        self.onAction(.toggle)
-                    }
+    func start() -> Bool {
+        guard timer == nil else { return true }
+        let flags = CGEventSource.flagsState(.combinedSessionState)
+        modifiers = ModifierShortcutState(shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift))
+        updateLayerRegistration()
+        let timer = Timer(timeInterval: 0.025, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.updateLayerRegistration()
+                let flags = CGEventSource.flagsState(.combinedSessionState)
+                if self.modifiers.update(shift: flags.contains(.maskShift), capsLock: flags.contains(.maskAlphaShift)) {
+                    self.onAction(.toggle)
                 }
             }
-            self.timer = timer
-            RunLoop.main.add(timer, forMode: .common)
         }
-        return isRunning
+        self.timer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        return true
     }
-    func stop() { timer?.invalidate(); timer = nil; captureKey = nil }
+
+    func updateLayerRegistration() {
+        if isEditingText() { layerKey = nil }
+        else if layerKey == nil {
+            layerKey = HotKey(Shortcut(keyCode: kVK_DownArrow, modifiers: .shift, key: "↓")) { [weak self] in
+                guard let self, !self.isEditingText() else { return }
+                self.onAction(.nextLayer)
+            }
+        }
+    }
+
+    func stop() { timer?.invalidate(); timer = nil; layerKey = nil }
 }
