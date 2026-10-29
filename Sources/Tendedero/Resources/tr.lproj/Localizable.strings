@@ -2,7 +2,7 @@
 
 /* AppDelegate */
 "Let Tendedero handle your screenshots?" = "Ekran görüntülerini Tendedero yönetsin mi?";
-"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Ekran görüntüleri, kayan küçük resim olmadan anında ipin üzerine asılacak ve Masaüstünüzde birikmeyecek. Saklamak için bir klasöre sürükleyin ya da çarpı ile silin. Bunu menü çubuğundan kapatabilirsiniz; Tendedero kapandığında ayarlarınız geri gelir.";
+"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Screenshots hang instantly and skip the Desktop. Taking a card down keeps its file; use Move to Trash to delete it. Your screenshot settings return when ClipLine quits.";
 "Turn on" = "Etkinleştir";
 "Not now" = "Şimdi değil";
 "Hide line" = "İpi gizle";
@@ -18,7 +18,6 @@
 "Could not change the login setting" = "Giriş ayarı değiştirilemedi";
 "Move Tendedero to the Applications folder and try again." = "Tendedero'yu Uygulamalar klasörüne taşıyın ve tekrar deneyin.";
 "Keep on line" = "İpte tut";
-"As many as fit" = "Sığdığı kadar";
 "%d photos" = "%d fotoğraf";
 "Also watch folders" = "Klasörleri de izle";
 "Add Folder…" = "Klasör ekle…";
@@ -52,7 +51,6 @@
 "Markup" = "İşaretle";
 "Show in Finder" = "Finder'da göster";
 "Save to Desktop" = "Masaüstüne kaydet";
-"Discard" = "Sil";
 "Take down" = "İndir";
 "Move to Trash" = "Çöp Kutusu'na taşı";
 "Take down everything to the left" = "Soldakilerin hepsini indir";
@@ -75,7 +73,6 @@
 
 
 
-"Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
@@ -85,7 +82,6 @@
 
 
 
-"Region capture" = "Region capture";
 
 "Quit ClipLine" = "Quit ClipLine";
 
@@ -101,8 +97,17 @@
 
 "Select All" = "Select All";
 
-"Region capture · Shift+Z" = "Region capture · Shift+Z";
 
 "Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
 
-"Screenshot permissions…" = "Screenshot permissions…";
+"All cards" = "All cards";
+"Cancel" = "Cancel";
+"Create an empty layer; Shift+Down switches layers" = "Create an empty layer; Shift+Down switches layers";
+"Daily" = "Daily";
+"Layer %d" = "Layer %d";
+"Move original file to Trash" = "Move original file to Trash";
+"New layer" = "New layer";
+"Next layer · Shift+Down" = "Next layer · Shift+Down";
+"Rename layer" = "Rename layer";
+"Save" = "Save";
+"Screenshot: Command+Shift+4 (macOS)" = "Screenshot: Command+Shift+4 (macOS)";

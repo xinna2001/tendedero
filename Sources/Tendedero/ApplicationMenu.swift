@@ -3,12 +3,11 @@ import AppKit
 /// Standard responder-chain editing actions, available from both menu and keyboard.
 @MainActor
 enum ApplicationMenu {
-    static func install(show: @escaping () -> Void, capture: @escaping () -> Void, note: @escaping () -> Void) {
+    static func install(show: @escaping () -> Void, note: @escaping () -> Void) {
         let bar = NSMenu()
         let app = NSMenu(title: "ClipLine · 图绳")
         app.addItem(ClosureMenuItem(L("Show line"), handler: show))
         app.addItem(ClosureMenuItem(L("New note"), handler: note))
-        app.addItem(ClosureMenuItem(L("Region capture"), handler: capture))
         app.addItem(.separator())
         app.addItem(NSMenuItem(title: L("Quit ClipLine"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         let appItem = NSMenuItem(title: "ClipLine", action: nil, keyEquivalent: "")

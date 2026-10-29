@@ -4,7 +4,7 @@
 
 /* AppDelegate */
 "Let Tendedero handle your screenshots?" = "क्या Tendedero आपके स्क्रीनशॉट संभाले?";
-"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "स्क्रीनशॉट लेते ही वे रस्सी पर टँग जाएँगे, बिना तैरते थंबनेल के, और आपके डेस्कटॉप पर जमा नहीं होंगे। किसी को रखना हो तो उसे फ़ोल्डर में खींचें, या क्रॉस से हटा दें। आप इसे मेनू बार से बंद कर सकते हैं, और Tendedero बंद होने पर आपकी सेटिंग्स वापस आ जाती हैं।";
+"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "Screenshots hang instantly and skip the Desktop. Taking a card down keeps its file; use Move to Trash to delete it. Your screenshot settings return when ClipLine quits.";
 "Turn on" = "चालू करें";
 "Not now" = "अभी नहीं";
 "Hide line" = "रस्सी छिपाएँ";
@@ -20,7 +20,6 @@
 "Could not change the login setting" = "लॉगिन सेटिंग बदली नहीं जा सकी";
 "Move Tendedero to the Applications folder and try again." = "Tendedero को Applications फ़ोल्डर में ले जाएँ और फिर से कोशिश करें।";
 "Keep on line" = "रस्सी पर रखें";
-"As many as fit" = "जितने आ सकें";
 "%d photos" = "%d फ़ोटो";
 "Also watch folders" = "फ़ोल्डर पर भी नज़र रखें";
 "Add Folder…" = "फ़ोल्डर जोड़ें…";
@@ -54,7 +53,6 @@
 "Markup" = "मार्कअप";
 "Show in Finder" = "Finder में दिखाएँ";
 "Save to Desktop" = "डेस्कटॉप पर सेव करें";
-"Discard" = "हटाएँ";
 "Take down" = "उतारें";
 "Move to Trash" = "ट्रैश में ले जाएँ";
 "Take down everything to the left" = "बाईं ओर का सब उतारें";
@@ -77,7 +75,6 @@
 
 
 
-"Screen capture needs Screen Recording permission in System Settings." = "Screen capture needs Screen Recording permission in System Settings.";
 
 "OK" = "OK";
 
@@ -87,7 +84,6 @@
 
 
 
-"Region capture" = "Region capture";
 
 "Quit ClipLine" = "Quit ClipLine";
 
@@ -103,8 +99,17 @@
 
 "Select All" = "Select All";
 
-"Region capture · Shift+Z" = "Region capture · Shift+Z";
 
 "Show / hide · Caps Lock+Shift" = "Show / hide · Caps Lock+Shift";
 
-"Screenshot permissions…" = "Screenshot permissions…";
+"All cards" = "All cards";
+"Cancel" = "Cancel";
+"Create an empty layer; Shift+Down switches layers" = "Create an empty layer; Shift+Down switches layers";
+"Daily" = "Daily";
+"Layer %d" = "Layer %d";
+"Move original file to Trash" = "Move original file to Trash";
+"New layer" = "New layer";
+"Next layer · Shift+Down" = "Next layer · Shift+Down";
+"Rename layer" = "Rename layer";
+"Save" = "Save";
+"Screenshot: Command+Shift+4 (macOS)" = "Screenshot: Command+Shift+4 (macOS)";

@@ -2,7 +2,7 @@
 
 /* AppDelegate */
 "Let Tendedero handle your screenshots?" = "让 Tendedero 接管你的截图？";
-"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "你截图的那一瞬间，图片就会挂到晾衣绳上——没有浮动缩略图，也不会堆到桌面上。拖进文件夹即保留，点叉即丢弃。随时可以从菜单栏关掉，退出 Tendedero 后你的设置会自动还原。";
+"Screenshots will hang on the line the instant you take them, without the floating thumbnail, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the cross. You can turn this off from the menu bar, and your settings come back when Tendedero quits." = "截图会自动挂上绳，不堆到桌面。点叉只取下卡片，图片文件保留；需要删除时从菜单移到废纸篓。退出后恢复原截图设置。";
 "Turn on" = "开启";
 "Not now" = "以后再说";
 "Hide line" = "隐藏晾衣绳";
@@ -18,7 +18,6 @@
 "Could not change the login setting" = "无法更改登录项设置";
 "Move Tendedero to the Applications folder and try again." = "请先把 Tendedero 移到「应用程序」文件夹，再试一次。";
 "Keep on line" = "绳上保留";
-"As many as fit" = "放得下的数量";
 "%d photos" = "%d 张";
 "Also watch folders" = "同时监视文件夹";
 "Add Folder…" = "添加文件夹…";
@@ -52,7 +51,6 @@
 "Markup" = "标记";
 "Show in Finder" = "在访达中显示";
 "Save to Desktop" = "存储到桌面";
-"Discard" = "丢弃";
 "Take down" = "取下";
 "Move to Trash" = "移到废纸篓";
 "Take down everything to the left" = "取下左侧全部";
@@ -75,7 +73,6 @@
 
 
 
-"Screen capture needs Screen Recording permission in System Settings." = "框选截图需要在系统设置中允许 ClipLine 的屏幕录制权限。";
 
 "OK" = "好";
 
@@ -85,7 +82,6 @@
 
 
 
-"Region capture" = "框选截图";
 
 "Quit ClipLine" = "退出图绳";
 
@@ -101,8 +97,17 @@
 
 "Select All" = "全选";
 
-"Region capture · Shift+Z" = "框选截图 · Shift+Z";
 
 "Show / hide · Caps Lock+Shift" = "显示 / 隐藏 · Caps Lock+Shift";
 
-"Screenshot permissions…" = "截图权限…";
+"All cards" = "保留全部卡片";
+"Cancel" = "取消";
+"Create an empty layer; Shift+Down switches layers" = "创建空图层；Shift＋↓切换图层";
+"Daily" = "日常";
+"Layer %d" = "图层 %d";
+"Move original file to Trash" = "将原文件移到废纸篓";
+"New layer" = "新建图层";
+"Next layer · Shift+Down" = "下一图层 · Shift＋↓";
+"Rename layer" = "重命名图层";
+"Save" = "保存";
+"Screenshot: Command+Shift+4 (macOS)" = "截图：Command＋Shift＋4（macOS）";

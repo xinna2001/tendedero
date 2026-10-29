@@ -43,7 +43,7 @@ enum Layout {
     /// `scroll` brings older ones in from the left. Otherwise (a line hung
     /// on a wider screen) they move closer together so none is past the edge.
     static func x(index: Int, count: Int, width: CGFloat, visible: Int, scroll: CGFloat) -> CGFloat {
-        if Line.keepOnLine != nil && count > visible {
+        if count > visible {
             let newest = width / 2 + CGFloat(visible - 1) * spacing / 2
             return newest - CGFloat(count - 1 - index) * spacing + scroll
         }
@@ -59,22 +59,25 @@ struct LineView: View {
     var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
+            let contentWidth = max(200, width - 160)
             let live = line.items.filter { !$0.falling }
             ZStack(alignment: .topLeading) {
                 Rope(width: width)
+                NewLayerClip(line: line)
+                    .position(x: 80, y: Layout.ropeY(x: 80, width: width) + 29)
 
                 ForEach(Array(live.enumerated()), id: \.element.id) { index, item in
-                    let x = Layout.x(index: index, count: live.count + 1, width: width,
-                                     visible: line.visibleCount, scroll: line.scroll)
+                    let x = 160 + Layout.x(index: index, count: live.count + 1, width: contentWidth,
+                                          visible: line.visibleCount, scroll: line.scroll)
                     let ropeY = Layout.ropeY(x: x, width: width)
                     PeggedView(item: item, line: line)
                         .frame(width: Layout.cardWidth, height: Layout.panelHeight - ropeY, alignment: .top)
                         // Photos scrolled towards an edge fade out before they reach it.
-                        .opacity(min(1, max(0, min(x, width - x) / 90)))
+                        .opacity(min(1, max(0, min(x - 160, width - x) / 90)))
                         .position(x: x, y: ropeY - Layout.pinAbove + (Layout.panelHeight - ropeY) / 2)
                 }
-                let addX = Layout.x(index: live.count, count: live.count + 1, width: width,
-                                    visible: line.visibleCount, scroll: line.scroll)
+                let addX = 160 + Layout.x(index: live.count, count: live.count + 1, width: contentWidth,
+                                         visible: line.visibleCount, scroll: line.scroll)
                 EmptyNoteClip(action: { line.onNewNote() })
                     .position(x: addX, y: Layout.ropeY(x: addX, width: width) + 19)
             }
@@ -89,6 +92,30 @@ struct LineView: View {
         .onPreferenceChange(HitRectsKey.self) { rects in
             line.hitRects = rects
         }
+    }
+}
+
+private struct NewLayerClip: View {
+    @ObservedObject var line: Line
+    var body: some View {
+        Button(action: { line.onNewLayer() }) {
+            VStack(spacing: 2) {
+                Clothespin().frame(width: 38, height: 30)
+                Text(L("New layer")).font(.system(size: 11, weight: .medium))
+                Text(line.layerPosition)
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.middle)
+            }
+            .frame(width: 140, height: 82)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(L("Create an empty layer; Shift+Down switches layers"))
+        .accessibilityLabel(L("New layer"))
+        .background(GeometryReader { geometry in
+            Color.clear.preference(key: HitRectsKey.self,
+                                   value: [Line.newLayerClipID: geometry.frame(in: .global)])
+        })
     }
 }
 
